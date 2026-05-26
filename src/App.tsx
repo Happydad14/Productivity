@@ -170,6 +170,26 @@ const INITIAL_GOALS = (): Goal[] => [
 ];
 
 export default function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('xp_session_active') === 'true';
+  });
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [loginError, setLoginError] = useState(false);
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const correctKey = import.meta.env.VITE_ACCESS_KEY || "productivity2026";
+    if (password === correctKey) {
+      sessionStorage.setItem('xp_session_active', 'true');
+      setIsAuthenticated(true);
+      setLoginError(false);
+    } else {
+      setLoginError(true);
+      setTimeout(() => setLoginError(false), 600);
+    }
+  };
+
   const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals'>('daily');
   const [theme, setTheme] = useState<'dark-glassmorphism' | 'light-neumorphic' | 'cyberpunk'>('dark-glassmorphism');
 
@@ -253,6 +273,58 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="app-wrapper">
+        {/* Dynamic Background Glow Nodes */}
+        <div className="bg-glow-orange"></div>
+        <div className="bg-glow-purple"></div>
+        <div className="bg-glow-cyan"></div>
+
+        <div className="login-overlay-container">
+          <GlassCard className={`login-glass-card ${loginError ? 'shake-error' : ''}`}>
+            <div className="login-logo-container">
+              <span className="login-icon">🔒</span>
+              <h2 className="login-title">Productivity & Execution</h2>
+              <p className="login-subtitle">Dashboard Access Key Required</p>
+            </div>
+
+            <form onSubmit={handleLoginSubmit} className="login-form">
+              <div className="login-input-group">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter access key..."
+                  className="login-password-input"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="pwd-toggle-btn"
+                  title={showPassword ? 'Hide Key' : 'Show Key'}
+                >
+                  {showPassword ? '👁️' : '👁️‍🗨️'}
+                </button>
+              </div>
+
+              {loginError && (
+                <div className="login-error-message">
+                  Invalid Access Key. Please try again.
+                </div>
+              )}
+
+              <button type="submit" className="login-submit-btn">
+                Unlock Dashboard
+              </button>
+            </form>
+          </GlassCard>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app-wrapper">
