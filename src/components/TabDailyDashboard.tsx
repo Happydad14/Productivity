@@ -38,6 +38,14 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
 }) => {
   const [newTasks, setNewTasks] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
+  const [dragOverIndex, setDragOverIndex] = useState<{ index: number; type: 'week' | 'month' } | null>(null);
+
+  const handleDrop = (e: React.DragEvent, index: number, type: 'week' | 'month') => {
+    e.preventDefault();
+    const title = e.dataTransfer.getData('text/plain');
+    if (!title) return;
+    handlePriorityChange(index, title, type);
+  };
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
 
@@ -363,34 +371,60 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
         <GlassCard className="priorities-card header-glass">
           <div className="priority-header">TOP 5 PRIORITIES - THIS WEEK</div>
           <ol className="priority-list">
-            {prioritiesWeek.map((p, idx) => (
-              <li key={`week-${idx}`}>
-                <input
-                  type="text"
-                  value={p}
-                  onChange={(e) => handlePriorityChange(idx, e.target.value, 'week')}
-                  placeholder={`Priority ${idx + 1}...`}
-                  className="priority-input"
-                />
-              </li>
-            ))}
+            {prioritiesWeek.map((p, idx) => {
+              const isDragOver = dragOverIndex?.type === 'week' && dragOverIndex?.index === idx;
+              return (
+                <li
+                  key={`week-${idx}`}
+                  className={isDragOver ? 'drag-active-week' : ''}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={() => setDragOverIndex({ index: idx, type: 'week' })}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDrop={(e) => {
+                    handleDrop(e, idx, 'week');
+                    setDragOverIndex(null);
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={p}
+                    onChange={(e) => handlePriorityChange(idx, e.target.value, 'week')}
+                    placeholder={`Priority ${idx + 1}...`}
+                    className="priority-input"
+                  />
+                </li>
+              );
+            })}
           </ol>
         </GlassCard>
 
         <GlassCard className="priorities-card header-glass">
           <div className="priority-header">TOP 5 PRIORITIES - THIS MONTH</div>
           <ol className="priority-list">
-            {prioritiesMonth.map((p, idx) => (
-              <li key={`month-${idx}`}>
-                <input
-                  type="text"
-                  value={p}
-                  onChange={(e) => handlePriorityChange(idx, e.target.value, 'month')}
-                  placeholder={`Priority ${idx + 1}...`}
-                  className="priority-input"
-                />
-              </li>
-            ))}
+            {prioritiesMonth.map((p, idx) => {
+              const isDragOver = dragOverIndex?.type === 'month' && dragOverIndex?.index === idx;
+              return (
+                <li
+                  key={`month-${idx}`}
+                  className={isDragOver ? 'drag-active-month' : ''}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={() => setDragOverIndex({ index: idx, type: 'month' })}
+                  onDragLeave={() => setDragOverIndex(null)}
+                  onDrop={(e) => {
+                    handleDrop(e, idx, 'month');
+                    setDragOverIndex(null);
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={p}
+                    onChange={(e) => handlePriorityChange(idx, e.target.value, 'month')}
+                    placeholder={`Priority ${idx + 1}...`}
+                    className="priority-input"
+                  />
+                </li>
+              );
+            })}
           </ol>
         </GlassCard>
       </div>
@@ -489,6 +523,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     <div 
                       key={task.id} 
                       className={`task-item task-${task.category} target-item-row`}
+                      draggable={editingTaskId !== task.id}
+                      onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
                     >
                       {editingTaskId === task.id ? (
                         <input
@@ -560,6 +596,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     <div 
                       key={task.id} 
                       className={`task-item task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
+                      draggable={true}
+                      onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
                     >
                       <label className="checkbox-container">
                         <input
@@ -597,6 +635,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     <div 
                       key={task.id} 
                       className={`task-item task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
+                      draggable={true}
+                      onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
                     >
                       <label className="checkbox-container">
                         <input
