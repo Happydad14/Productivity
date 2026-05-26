@@ -3,6 +3,7 @@ import { GlassCard } from './components/GlassCard';
 import { TabDailyDashboard, type Task } from './components/TabDailyDashboard';
 import { TabHealthScorecard, type Habit } from './components/TabHealthScorecard';
 import { TabGoalsTargets, type Goal } from './components/TabGoalsTargets';
+import { TaskInbox } from './components/TaskInbox';
 
 // ----------------------------------------------------
 // DEFAULT HIGH-FIDELITY DOCK DATASETS
@@ -162,6 +163,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : INITIAL_GOALS();
   });
 
+  const [inboxTasks, setInboxTasks] = useState<string[]>(() => {
+    const saved = localStorage.getItem('xp_inbox_tasks');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   // Sync to LocalStorage (Acts as our permanent local database)
   useEffect(() => {
     localStorage.setItem('xp_tasks', JSON.stringify(tasks));
@@ -182,6 +188,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('xp_goals', JSON.stringify(goals));
   }, [goals]);
+
+  useEffect(() => {
+    localStorage.setItem('xp_inbox_tasks', JSON.stringify(inboxTasks));
+  }, [inboxTasks]);
 
   // Apply theme to document element
   useEffect(() => {
@@ -324,6 +334,8 @@ export default function App() {
           />
         )}
       </main>
+
+      <TaskInbox items={inboxTasks} setItems={setInboxTasks} />
     </div>
   );
 }

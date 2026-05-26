@@ -39,12 +39,41 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   const [newTasks, setNewTasks] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [dragOverIndex, setDragOverIndex] = useState<{ index: number; type: 'week' | 'month' } | null>(null);
+  const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
 
   const handleDrop = (e: React.DragEvent, index: number, type: 'week' | 'month') => {
     e.preventDefault();
     const title = e.dataTransfer.getData('text/plain');
     if (!title) return;
     handlePriorityChange(index, title, type);
+  };
+
+  const handleBucketDrop = (
+    e: React.DragEvent,
+    category: 'work' | 'career' | 'family' | 'health',
+    timeframe: 'target' | 'near' | 'medium-long'
+  ) => {
+    e.preventDefault();
+    const title = e.dataTransfer.getData('text/plain');
+    if (!title) return;
+
+    const todayStr = new Date().toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+    });
+
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      category,
+      timeframe,
+      isCompleted: false,
+      dateAdded: todayStr,
+    };
+
+    setTasks(prev => [...prev, newTask]);
+    setDragOverBucket(null);
   };
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
@@ -522,7 +551,15 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
               {/* TARGETS SECTION */}
               <div className="task-section">
                 <div className="task-section-title">TARGETS</div>
-                <div className="task-list">
+                <div
+                  className={`task-list ${dragOverBucket === `${cat.id}-target` ? 'task-list-drop-active' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                  onDragEnter={() => setDragOverBucket(`${cat.id}-target`)}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
+                  }}
+                  onDrop={(e) => handleBucketDrop(e, cat.id, 'target')}
+                >
                   {targets.map(task => (
                     <div 
                       key={task.id} 
@@ -595,7 +632,15 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
               {/* NEAR TERM SECTION */}
               <div className="task-section">
                 <div className="task-section-title">NEAR TERM</div>
-                <div className="task-list">
+                <div
+                  className={`task-list ${dragOverBucket === `${cat.id}-near` ? 'task-list-drop-active' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                  onDragEnter={() => setDragOverBucket(`${cat.id}-near`)}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
+                  }}
+                  onDrop={(e) => handleBucketDrop(e, cat.id, 'near')}
+                >
                   {nearTerm.map(task => (
                     <div 
                       key={task.id} 
@@ -634,7 +679,15 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
               {/* MEDIUM / LONG TERM SECTION */}
               <div className="task-section">
                 <div className="task-section-title">MEDIUM / LONG TERM</div>
-                <div className="task-list">
+                <div
+                  className={`task-list ${dragOverBucket === `${cat.id}-medium-long` ? 'task-list-drop-active' : ''}`}
+                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                  onDragEnter={() => setDragOverBucket(`${cat.id}-medium-long`)}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
+                  }}
+                  onDrop={(e) => handleBucketDrop(e, cat.id, 'medium-long')}
+                >
                   {mediumLong.map(task => (
                     <div 
                       key={task.id} 

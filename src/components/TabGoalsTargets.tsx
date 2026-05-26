@@ -27,6 +27,35 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
   setGoals,
 }) => {
   const [newGoalTexts, setNewGoalTexts] = useState<Record<string, string>>({});
+  const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
+
+  const handleGoalDrop = (
+    e: React.DragEvent,
+    category: 'work' | 'career' | 'family' | 'health',
+    term: 'medium' | 'long'
+  ) => {
+    e.preventDefault();
+    const title = e.dataTransfer.getData('text/plain');
+    if (!title) return;
+
+    const todayStr = new Date().toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+    });
+
+    const newGoal: Goal = {
+      id: crypto.randomUUID(),
+      title: title.trim(),
+      category,
+      term,
+      isAchieved: false,
+      dateAdded: todayStr,
+    };
+
+    setGoals(prev => [...prev, newGoal]);
+    setDragOverBucket(null);
+  };
 
   const toggleGoal = (goalId: string) => {
     setGoals(prev =>
@@ -96,8 +125,16 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                 {/* Medium Term Goals */}
                 <div className="term-column">
                   <div className="term-column-title">Medium Term</div>
-                  
-                  <div className="goals-list">
+
+                  <div
+                    className={`goals-list ${dragOverBucket === `${cat.id}-medium` ? 'goals-list-drop-active' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                    onDragEnter={() => setDragOverBucket(`${cat.id}-medium`)}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
+                    }}
+                    onDrop={(e) => handleGoalDrop(e, cat.id, 'medium')}
+                  >
                     {mediumTerm.map(goal => (
                       <div 
                         key={goal.id} 
@@ -138,8 +175,16 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                 {/* Long Term Goals */}
                 <div className="term-column">
                   <div className="term-column-title">Long Term</div>
-                  
-                  <div className="goals-list">
+
+                  <div
+                    className={`goals-list ${dragOverBucket === `${cat.id}-long` ? 'goals-list-drop-active' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
+                    onDragEnter={() => setDragOverBucket(`${cat.id}-long`)}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
+                    }}
+                    onDrop={(e) => handleGoalDrop(e, cat.id, 'long')}
+                  >
                     {longTerm.map(goal => (
                       <div 
                         key={goal.id} 
