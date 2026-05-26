@@ -9,108 +9,14 @@ import { TabGoalsTargets, type Goal } from './components/TabGoalsTargets';
 // (Modeled closely on user's reference screenshot)
 // ----------------------------------------------------
 
-const getTodayDateString = () => {
-  return new Date().toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: '2-digit',
-  });
-};
+// Clean slate — Bryan populates real data
+const INITIAL_TASKS = (): Task[] => [];
 
-const getYesterdayDateString = () => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: '2-digit',
-  });
-};
+const INITIAL_PRIORITIES_WEEK: string[] = ['', '', '', '', ''];
+const INITIAL_PRIORITIES_MONTH: string[] = ['', '', '', '', ''];
 
-const getTwoDaysAgoDateString = () => {
-  const d = new Date();
-  d.setDate(d.getDate() - 2);
-  return d.toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: '2-digit',
-  });
-};
-
-const INITIAL_TASKS = (): Task[] => {
-  const today = getTodayDateString();
-  const yesterday = getYesterdayDateString();
-  const twoDaysAgo = getTwoDaysAgoDateString();
-
-  return [
-    // --- WORK ---
-    { id: 'w-t1', title: 'Deliver outstanding results', category: 'work', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-3' },
-    { id: 'w-t2', title: 'Streamline team processes', category: 'work', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-2' },
-    { id: 'w-n1', title: 'Send follow-up emails', category: 'work', timeframe: 'near', isCompleted: false, dateAdded: yesterday, tier: 'tier-1' },
-    { id: 'w-n2', title: 'Review buyer list', category: 'work', timeframe: 'near', isCompleted: false, dateAdded: yesterday, tier: 'tier-2' },
-    { id: 'w-m1', title: 'Optimize reporting dashboard', category: 'work', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-3' },
-    { id: 'w-m2', title: 'Automate lead workflow', category: 'work', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-1' },
-    { id: 'w-m3', title: 'Improve team documentation', category: 'work', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-2' },
-
-    // --- CAREER ---
-    { id: 'c-t1', title: 'Grow expertise', category: 'career', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-2' },
-    { id: 'c-t2', title: 'Build valuable network', category: 'career', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-3' },
-    { id: 'c-n1', title: 'Update LinkedIn profile', category: 'career', timeframe: 'near', isCompleted: false, dateAdded: today, tier: 'tier-1' },
-    { id: 'c-m1', title: 'Complete UI certification', category: 'career', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-3' },
-    { id: 'c-m2', title: 'Attend industry conference', category: 'career', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-2' },
-    { id: 'c-m3', title: 'Build personal brand', category: 'career', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo, tier: 'tier-1' },
-
-    // --- HOME & FAMILY ---
-    { id: 'h-t1', title: 'Maintain a happy home', category: 'family', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'h-t2', title: 'Be present with family', category: 'family', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'h-n1', title: 'Call parents', category: 'family', timeframe: 'near', isCompleted: false, dateAdded: today },
-    { id: 'h-m1', title: 'Plan weekend trip', category: 'family', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'h-m2', title: 'Organize home office', category: 'family', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'h-m3', title: 'Home improvement project', category: 'family', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo },
-
-    // --- HEALTH & FITNESS ---
-    { id: 'f-t1', title: 'Stay fit and strong', category: 'health', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'f-t2', title: 'Build healthy daily habits', category: 'health', timeframe: 'target', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'f-n1', title: 'Avoid alcohol', category: 'health', timeframe: 'near', isCompleted: false, dateAdded: today },
-    { id: 'f-n2', title: 'Calorie spend 850', category: 'health', timeframe: 'near', isCompleted: false, dateAdded: today },
-    { id: 'f-n3', title: 'Morning fast', category: 'health', timeframe: 'near', isCompleted: false, dateAdded: today },
-    { id: 'f-n4', title: 'Meditation 5min+', category: 'health', timeframe: 'near', isCompleted: false, dateAdded: today },
-    { id: 'f-m1', title: 'Run a 10K', category: 'health', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'f-m2', title: 'Build muscle', category: 'health', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo },
-    { id: 'f-m3', title: 'Improve sleep quality', category: 'health', timeframe: 'medium-long', isCompleted: false, dateAdded: twoDaysAgo },
-
-    // --- COMPLETED TODAY (COMPLETED ON CURRENT DATE) ---
-    { id: 'comp-1', title: 'Update CRM notes', category: 'work', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: today, tier: 'tier-2' },
-    { id: 'comp-2', title: 'Schedule appointment', category: 'family', timeframe: 'near', isCompleted: true, dateAdded: yesterday, dateCompleted: today },
-    { id: 'comp-3', title: 'Workout', category: 'health', timeframe: 'near', isCompleted: true, dateAdded: yesterday, dateCompleted: today },
-    { id: 'comp-4', title: 'Reach out to mentor', category: 'career', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: today, tier: 'tier-3' },
-    { id: 'comp-5', title: 'Grocery shopping', category: 'family', timeframe: 'near', isCompleted: true, dateAdded: yesterday, dateCompleted: today },
-
-    // --- ALL HISTORICAL COMPLETIONS (OLDER COMPLETED DATES) ---
-    { id: 'hist-1', title: 'Prepare presentation', category: 'work', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: yesterday, tier: 'tier-3' },
-    { id: 'hist-2', title: 'Buy groceries', category: 'family', timeframe: 'near', isCompleted: true, dateAdded: yesterday, dateCompleted: yesterday },
-    { id: 'hist-3', title: 'Avoid alcohol', category: 'health', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: twoDaysAgo },
-    { id: 'hist-4', title: 'Read one sector report', category: 'career', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: yesterday, tier: 'tier-1' },
-    { id: 'hist-5', title: 'Pay electricity bill', category: 'family', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: yesterday },
-    { id: 'hist-6', title: 'Client meeting', category: 'work', timeframe: 'near', isCompleted: true, dateAdded: twoDaysAgo, dateCompleted: twoDaysAgo, tier: 'tier-2' },
-  ];
-};
-
-const INITIAL_PRIORITIES_WEEK = [
-  'Finalize project proposal',
-  'Workout 4x',
-  'Client meeting',
-  'Review team updates',
-  'Grocery shopping',
-];
-
-const INITIAL_PRIORITIES_MONTH = [
-  'Achieve sales target',
-  'Launch new feature',
-  'Workout 20x',
-  'Save $500',
-  'Read 4 books',
-];
+// One-time wipe key — bumping this value forces every browser to clear stored task/priority data on next load
+const DATA_RESET_VERSION = 'wipe-2026-05-26-clean-slate';
 
 // Helper to seed habit history dots so dashboard looks fully active ending today
 const seedHabitHistory = (density: number, skipDays: number[] = []) => {
@@ -192,6 +98,14 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals'>('daily');
   const [theme, setTheme] = useState<'dark-glassmorphism' | 'light-neumorphic' | 'cyberpunk'>('dark-glassmorphism');
+
+  // One-time wipe of stale template data — runs once per browser when DATA_RESET_VERSION changes
+  if (typeof window !== 'undefined' && localStorage.getItem('xp_data_reset_version') !== DATA_RESET_VERSION) {
+    localStorage.removeItem('xp_tasks');
+    localStorage.removeItem('xp_priorities_week');
+    localStorage.removeItem('xp_priorities_month');
+    localStorage.setItem('xp_data_reset_version', DATA_RESET_VERSION);
+  }
 
   // Core app state
   const [tasks, setTasks] = useState<Task[]>(() => {

@@ -82,19 +82,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
-  const cycleTaskTier = (taskId: string) => {
+  const setTaskTier = (taskId: string, tier: 'tier-1' | 'tier-2' | 'tier-3') => {
     setTasks(prev =>
-      prev.map(task => {
-        if (task.id === taskId) {
-          const currentTier = task.tier || 'tier-2';
-          let nextTier: 'tier-1' | 'tier-2' | 'tier-3' = 'tier-2';
-          if (currentTier === 'tier-1') nextTier = 'tier-2';
-          else if (currentTier === 'tier-2') nextTier = 'tier-3';
-          else if (currentTier === 'tier-3') nextTier = 'tier-1';
-          return { ...task, tier: nextTier };
-        }
-        return task;
-      })
+      prev.map(task => (task.id === taskId ? { ...task, tier } : task))
     );
   };
 
@@ -303,43 +293,37 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
     );
   };
 
+  // Tier→Priority mapping: tier-3 = P1 (top), tier-2 = P2 (mid), tier-1 = P3 (low)
+  const tierToPriority = (tier?: 'tier-1' | 'tier-2' | 'tier-3'): 'P1' | 'P2' | 'P3' => {
+    if (tier === 'tier-3') return 'P1';
+    if (tier === 'tier-1') return 'P3';
+    return 'P2';
+  };
+  const priorityToTier = (p: 'P1' | 'P2' | 'P3'): 'tier-1' | 'tier-2' | 'tier-3' => {
+    if (p === 'P1') return 'tier-3';
+    if (p === 'P3') return 'tier-1';
+    return 'tier-2';
+  };
+
   const renderTierIcon = (task: Task) => {
     if (task.category !== 'work' && task.category !== 'career') return null;
-    const tier = task.tier || 'tier-2';
+    const priority = tierToPriority(task.tier);
+    const catClass = task.category === 'work' ? 'priority-pill-work' : 'priority-pill-career';
 
-    if (task.category === 'work') {
-      const bars = tier === 'tier-1' ? '❙' : tier === 'tier-2' ? '❙❙' : '❙❙❙';
-      const label = tier === 'tier-1' ? 'Low' : tier === 'tier-2' ? 'Medium' : 'High';
-      return (
-        <span 
-          className={`tier-icon work-tier ${tier}`} 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            cycleTaskTier(task.id);
-          }}
-          title={`Work Priority: ${label}. Click to cycle.`}
-        >
-          {bars}
-        </span>
-      );
-    } else {
-      const stars = tier === 'tier-1' ? '✦' : tier === 'tier-2' ? '✦✦' : '✦✦✦';
-      const label = tier === 'tier-1' ? 'Tier 1' : tier === 'tier-2' ? 'Tier 2' : 'Tier 3';
-      return (
-        <span 
-          className={`tier-icon career-tier ${tier}`} 
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            cycleTaskTier(task.id);
-          }}
-          title={`Career Growth: ${label}. Click to cycle.`}
-        >
-          {stars}
-        </span>
-      );
-    }
+    return (
+      <select
+        className={`priority-pill ${catClass} priority-${priority.toLowerCase()}`}
+        value={priority}
+        onChange={(e) => setTaskTier(task.id, priorityToTier(e.target.value as 'P1' | 'P2' | 'P3'))}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        title="Set priority"
+      >
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
+      </select>
+    );
   };
 
   return (
@@ -369,14 +353,14 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
         {/* Bulk Import Trigger & Panel is placed outside the grid so it spans nicely, or we'll trigger it below the grid */}
 
         <GlassCard className="priorities-card header-glass">
-          <div className="priority-header">TOP 5 PRIORITIES - THIS WEEK</div>
+          <div className="priority-header">TOP 5 PRIORITIES - THIS WEEK <span className="priority-hint">(drag tasks here)</span></div>
           <ol className="priority-list">
             {prioritiesWeek.map((p, idx) => {
               const isDragOver = dragOverIndex?.type === 'week' && dragOverIndex?.index === idx;
               return (
                 <li
                   key={`week-${idx}`}
-                  className={isDragOver ? 'drag-active-week' : ''}
+                  className={`priority-li ${isDragOver ? 'drag-active-week' : ''} ${p ? 'has-value' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
                   onDragEnter={() => setDragOverIndex({ index: idx, type: 'week' })}
                   onDragLeave={() => setDragOverIndex(null)}
@@ -392,6 +376,16 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     placeholder={`Priority ${idx + 1}...`}
                     className="priority-input"
                   />
+                  {p && (
+                    <button
+                      className="priority-clear-btn"
+                      onClick={() => handlePriorityChange(idx, '', 'week')}
+                      title="Clear this priority"
+                      aria-label="Clear priority"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </li>
               );
             })}
@@ -399,14 +393,14 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
         </GlassCard>
 
         <GlassCard className="priorities-card header-glass">
-          <div className="priority-header">TOP 5 PRIORITIES - THIS MONTH</div>
+          <div className="priority-header">TOP 5 PRIORITIES - THIS MONTH <span className="priority-hint">(drag tasks here)</span></div>
           <ol className="priority-list">
             {prioritiesMonth.map((p, idx) => {
               const isDragOver = dragOverIndex?.type === 'month' && dragOverIndex?.index === idx;
               return (
                 <li
                   key={`month-${idx}`}
-                  className={isDragOver ? 'drag-active-month' : ''}
+                  className={`priority-li ${isDragOver ? 'drag-active-month' : ''} ${p ? 'has-value' : ''}`}
                   onDragOver={(e) => e.preventDefault()}
                   onDragEnter={() => setDragOverIndex({ index: idx, type: 'month' })}
                   onDragLeave={() => setDragOverIndex(null)}
@@ -422,6 +416,16 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     placeholder={`Priority ${idx + 1}...`}
                     className="priority-input"
                   />
+                  {p && (
+                    <button
+                      className="priority-clear-btn"
+                      onClick={() => handlePriorityChange(idx, '', 'month')}
+                      title="Clear this priority"
+                      aria-label="Clear priority"
+                    >
+                      ✕
+                    </button>
+                  )}
                 </li>
               );
             })}
