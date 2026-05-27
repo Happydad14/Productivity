@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { GlassCard } from './GlassCard';
+import { TouchDropZone } from './TouchDropZone';
+import { attachTouchDrag } from '../touchDnd';
 
 export interface Task {
   id: string;
@@ -41,20 +43,11 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   const [dragOverIndex, setDragOverIndex] = useState<{ index: number; type: 'week' | 'month' } | null>(null);
   const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
 
-  const handleDrop = (e: React.DragEvent, index: number, type: 'week' | 'month') => {
-    e.preventDefault();
-    const title = e.dataTransfer.getData('text/plain');
-    if (!title) return;
-    handlePriorityChange(index, title, type);
-  };
-
   const handleBucketDrop = (
-    e: React.DragEvent,
+    title: string,
     category: 'work' | 'career' | 'family' | 'health',
     timeframe: 'target' | 'near' | 'medium-long'
   ) => {
-    e.preventDefault();
-    const title = e.dataTransfer.getData('text/plain');
     if (!title) return;
 
     const todayStr = new Date().toLocaleDateString('en-US', {
@@ -387,14 +380,14 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
             {prioritiesWeek.map((p, idx) => {
               const isDragOver = dragOverIndex?.type === 'week' && dragOverIndex?.index === idx;
               return (
-                <li
+                <TouchDropZone
+                  as="li"
                   key={`week-${idx}`}
                   className={`priority-li ${isDragOver ? 'drag-active-week' : ''} ${p ? 'has-value' : ''}`}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={() => setDragOverIndex({ index: idx, type: 'week' })}
-                  onDragLeave={() => setDragOverIndex(null)}
-                  onDrop={(e) => {
-                    handleDrop(e, idx, 'week');
+                  onPayloadEnter={() => setDragOverIndex({ index: idx, type: 'week' })}
+                  onPayloadLeave={() => setDragOverIndex(null)}
+                  onPayloadDrop={(title) => {
+                    handlePriorityChange(idx, title, 'week');
                     setDragOverIndex(null);
                   }}
                 >
@@ -415,7 +408,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       ✕
                     </button>
                   )}
-                </li>
+                </TouchDropZone>
               );
             })}
           </ol>
@@ -427,14 +420,14 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
             {prioritiesMonth.map((p, idx) => {
               const isDragOver = dragOverIndex?.type === 'month' && dragOverIndex?.index === idx;
               return (
-                <li
+                <TouchDropZone
+                  as="li"
                   key={`month-${idx}`}
                   className={`priority-li ${isDragOver ? 'drag-active-month' : ''} ${p ? 'has-value' : ''}`}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={() => setDragOverIndex({ index: idx, type: 'month' })}
-                  onDragLeave={() => setDragOverIndex(null)}
-                  onDrop={(e) => {
-                    handleDrop(e, idx, 'month');
+                  onPayloadEnter={() => setDragOverIndex({ index: idx, type: 'month' })}
+                  onPayloadLeave={() => setDragOverIndex(null)}
+                  onPayloadDrop={(title) => {
+                    handlePriorityChange(idx, title, 'month');
                     setDragOverIndex(null);
                   }}
                 >
@@ -455,7 +448,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       ✕
                     </button>
                   )}
-                </li>
+                </TouchDropZone>
               );
             })}
           </ol>
@@ -551,21 +544,25 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
               {/* TARGETS SECTION */}
               <div className="task-section">
                 <div className="task-section-title">TARGETS</div>
-                <div
+                <TouchDropZone
                   className={`task-list ${dragOverBucket === `${cat.id}-target` ? 'task-list-drop-active' : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                  onDragEnter={() => setDragOverBucket(`${cat.id}-target`)}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
-                  }}
-                  onDrop={(e) => handleBucketDrop(e, cat.id, 'target')}
+                  dropEffect="copy"
+                  onPayloadEnter={() => setDragOverBucket(`${cat.id}-target`)}
+                  onPayloadLeave={() => setDragOverBucket(null)}
+                  onPayloadDrop={(title) => handleBucketDrop(title, cat.id, 'target')}
                 >
                   {targets.map(task => (
-                    <div 
-                      key={task.id} 
+                    <div
+                      key={task.id}
                       className={`task-item task-${task.category} target-item-row`}
                       draggable={editingTaskId !== task.id}
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
+                      onTouchStart={(e) => {
+                        if (editingTaskId === task.id) return;
+                        const touch = e.touches[0];
+                        if (!touch) return;
+                        attachTouchDrag(task.title, e.currentTarget, touch);
+                      }}
                     >
                       {editingTaskId === task.id ? (
                         <input
@@ -626,27 +623,30 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       className="add-task-input"
                     />
                   </div>
-                </div>
+                </TouchDropZone>
               </div>
 
               {/* NEAR TERM SECTION */}
               <div className="task-section">
                 <div className="task-section-title">NEAR TERM</div>
-                <div
+                <TouchDropZone
                   className={`task-list ${dragOverBucket === `${cat.id}-near` ? 'task-list-drop-active' : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                  onDragEnter={() => setDragOverBucket(`${cat.id}-near`)}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
-                  }}
-                  onDrop={(e) => handleBucketDrop(e, cat.id, 'near')}
+                  dropEffect="copy"
+                  onPayloadEnter={() => setDragOverBucket(`${cat.id}-near`)}
+                  onPayloadLeave={() => setDragOverBucket(null)}
+                  onPayloadDrop={(title) => handleBucketDrop(title, cat.id, 'near')}
                 >
                   {nearTerm.map(task => (
-                    <div 
-                      key={task.id} 
+                    <div
+                      key={task.id}
                       className={`task-item task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
                       draggable={true}
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        if (!touch) return;
+                        attachTouchDrag(task.title, e.currentTarget, touch);
+                      }}
                     >
                       <label className="checkbox-container">
                         <input
@@ -673,27 +673,30 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       className="add-task-input"
                     />
                   </div>
-                </div>
+                </TouchDropZone>
               </div>
 
               {/* MEDIUM / LONG TERM SECTION */}
               <div className="task-section">
                 <div className="task-section-title">MEDIUM / LONG TERM</div>
-                <div
+                <TouchDropZone
                   className={`task-list ${dragOverBucket === `${cat.id}-medium-long` ? 'task-list-drop-active' : ''}`}
-                  onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                  onDragEnter={() => setDragOverBucket(`${cat.id}-medium-long`)}
-                  onDragLeave={(e) => {
-                    if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
-                  }}
-                  onDrop={(e) => handleBucketDrop(e, cat.id, 'medium-long')}
+                  dropEffect="copy"
+                  onPayloadEnter={() => setDragOverBucket(`${cat.id}-medium-long`)}
+                  onPayloadLeave={() => setDragOverBucket(null)}
+                  onPayloadDrop={(title) => handleBucketDrop(title, cat.id, 'medium-long')}
                 >
                   {mediumLong.map(task => (
-                    <div 
-                      key={task.id} 
+                    <div
+                      key={task.id}
                       className={`task-item task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
                       draggable={true}
                       onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        if (!touch) return;
+                        attachTouchDrag(task.title, e.currentTarget, touch);
+                      }}
                     >
                       <label className="checkbox-container">
                         <input
@@ -720,7 +723,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       className="add-task-input"
                     />
                   </div>
-                </div>
+                </TouchDropZone>
               </div>
             </GlassCard>
           );

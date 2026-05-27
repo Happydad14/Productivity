@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GlassCard } from './GlassCard';
+import { TouchDropZone } from './TouchDropZone';
 
 export interface Goal {
   id: string;
@@ -30,12 +31,10 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
   const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
 
   const handleGoalDrop = (
-    e: React.DragEvent,
+    title: string,
     category: 'work' | 'career' | 'family' | 'health',
     term: 'medium' | 'long'
   ) => {
-    e.preventDefault();
-    const title = e.dataTransfer.getData('text/plain');
     if (!title) return;
 
     const todayStr = new Date().toLocaleDateString('en-US', {
@@ -126,14 +125,12 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                 <div className="term-column">
                   <div className="term-column-title">Medium Term</div>
 
-                  <div
+                  <TouchDropZone
                     className={`goals-list ${dragOverBucket === `${cat.id}-medium` ? 'goals-list-drop-active' : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                    onDragEnter={() => setDragOverBucket(`${cat.id}-medium`)}
-                    onDragLeave={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
-                    }}
-                    onDrop={(e) => handleGoalDrop(e, cat.id, 'medium')}
+                    dropEffect="copy"
+                    onPayloadEnter={() => setDragOverBucket(`${cat.id}-medium`)}
+                    onPayloadLeave={() => setDragOverBucket(null)}
+                    onPayloadDrop={(title) => handleGoalDrop(title, cat.id, 'medium')}
                   >
                     {mediumTerm.map(goal => (
                       <div 
@@ -169,21 +166,19 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                         className="add-goal-input"
                       />
                     </div>
-                  </div>
+                  </TouchDropZone>
                 </div>
 
                 {/* Long Term Goals */}
                 <div className="term-column">
                   <div className="term-column-title">Long Term</div>
 
-                  <div
+                  <TouchDropZone
                     className={`goals-list ${dragOverBucket === `${cat.id}-long` ? 'goals-list-drop-active' : ''}`}
-                    onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; }}
-                    onDragEnter={() => setDragOverBucket(`${cat.id}-long`)}
-                    onDragLeave={(e) => {
-                      if (!e.currentTarget.contains(e.relatedTarget as Node)) setDragOverBucket(null);
-                    }}
-                    onDrop={(e) => handleGoalDrop(e, cat.id, 'long')}
+                    dropEffect="copy"
+                    onPayloadEnter={() => setDragOverBucket(`${cat.id}-long`)}
+                    onPayloadLeave={() => setDragOverBucket(null)}
+                    onPayloadDrop={(title) => handleGoalDrop(title, cat.id, 'long')}
                   >
                     {longTerm.map(goal => (
                       <div 
@@ -219,7 +214,7 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                         className="add-goal-input"
                       />
                     </div>
-                  </div>
+                  </TouchDropZone>
                 </div>
               </div>
             </GlassCard>

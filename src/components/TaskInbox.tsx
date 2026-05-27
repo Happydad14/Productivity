@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { attachTouchDrag } from '../touchDnd';
 
 interface TaskInboxProps {
   items: string[];
@@ -137,6 +138,11 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
                   setDraggingIdx(idx);
                 }}
                 onDragEnd={() => setDraggingIdx(null)}
+                onTouchStart={(e) => {
+                  const touch = e.touches[0];
+                  if (!touch) return;
+                  attachTouchDrag(item, e.currentTarget, touch);
+                }}
                 title="Drag into a bucket"
               >
                 <span className="inbox-chip-grip" aria-hidden="true">⋮⋮</span>

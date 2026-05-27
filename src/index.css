@@ -2775,3 +2775,32 @@ body {
   background: rgba(5, 150, 105, 0.12) !important;
   outline-color: rgba(5, 150, 105, 0.55);
 }
+
+/* === Touch drag-and-drop (iPad / iOS) === */
+
+/* Draggable items: suppress iOS callout + selection while interacting.
+   Long-press synthesizes the drag; tapping (short touch) still bubbles to
+   onClick on child buttons. */
+.inbox-chip[draggable='true'],
+.task-item[draggable='true'],
+.target-item-row[draggable='true'] {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The source element fades while a touch drag is in progress, so it's
+   obvious the chip "lifted off". */
+.touch-drag-source {
+  opacity: 0.4;
+}
+
+/* The floating clone that follows the finger. Inline styles set its
+   position/size; these rules handle visual polish. */
+.touch-drag-clone {
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  cursor: grabbing;
+  -webkit-user-select: none;
+  user-select: none;
+}
