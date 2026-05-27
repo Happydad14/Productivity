@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { GlassCard } from './components/GlassCard';
 import { TabDailyDashboard, type Task } from './components/TabDailyDashboard';
 import { TabHealthScorecard, type Habit } from './components/TabHealthScorecard';
@@ -93,6 +93,50 @@ const getExpectedAuthToken = (): string => {
   const correctKey = import.meta.env.VITE_ACCESS_KEY || 'productivity2026';
   return deriveAuthToken(correctKey);
 };
+
+function SyncBadge({ status }: { status: 'idle' | 'syncing' | 'synced' | 'error' }) {
+  const map = {
+    idle: { color: '#64748b', label: 'Idle' },
+    syncing: { color: '#0ea5e9', label: 'Syncing…' },
+    synced: { color: '#10b981', label: 'Synced' },
+    error: { color: '#f97316', label: 'Offline' },
+  } as const;
+  const { color, label } = map[status];
+  const title =
+    status === 'error'
+      ? 'Cloud sync unavailable — changes are saved locally only. Enable Vercel KV on the project to sync across devices.'
+      : status === 'synced'
+        ? 'All changes are saved to the cloud and will appear on your other devices.'
+        : label;
+  return (
+    <span
+      title={title}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        marginLeft: 12,
+        fontSize: '0.7rem',
+        fontWeight: 600,
+        color: 'var(--text-dim)',
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+      }}
+    >
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: color,
+          boxShadow: `0 0 8px ${color}`,
+          animation: status === 'syncing' ? 'pulse 1.2s ease-in-out infinite' : undefined,
+        }}
+      />
+      {label}
+    </span>
+  );
+}
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
@@ -224,6 +268,120 @@ export default function App() {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // ----------------------------------------------------
+  // CROSS-DEVICE CLOUD SYNC (Vercel KV via /api/state)
+  // ----------------------------------------------------
+  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const cloudSyncRef = useRef<{
+    ready: boolean;
+    lastServerBlob: string;
+    lastModified: number;
+  }>({ ready: false, lastServerBlob: '', lastModified: 0 });
+  const authToken = useMemo(() => getExpectedAuthToken(), []);
+
+  type CloudState = {
+    tasks: Task[];
+    prioritiesWeek: string[];
+    prioritiesMonth: string[];
+    habits: Habit[];
+    goals: Goal[];
+    inboxTasks: string[];
+  };
+
+  const applyRemote = (data: Partial<CloudState>) => {
+    if (Array.isArray(data.tasks)) setTasks(data.tasks);
+    if (Array.isArray(data.prioritiesWeek)) setPrioritiesWeek(data.prioritiesWeek);
+    if (Array.isArray(data.prioritiesMonth)) setPrioritiesMonth(data.prioritiesMonth);
+    if (Array.isArray(data.habits)) setHabits(data.habits);
+    if (Array.isArray(data.goals)) setGoals(data.goals);
+    if (Array.isArray(data.inboxTasks)) setInboxTasks(data.inboxTasks);
+  };
+
+  // Initial pull on auth
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    setSyncStatus('syncing');
+    fetch('/api/state', { headers: { Authorization: `Bearer ${authToken}` } })
+      .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(({ state }) => {
+        if (cancelled) return;
+        if (state && typeof state === 'object') {
+          const { lastModified, ...data } = state as CloudState & { lastModified?: number };
+          applyRemote(data);
+          cloudSyncRef.current.lastServerBlob = JSON.stringify(data);
+          cloudSyncRef.current.lastModified = lastModified || 0;
+        }
+        cloudSyncRef.current.ready = true;
+        setSyncStatus('synced');
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Allow saves to proceed; localStorage still works as fallback.
+        cloudSyncRef.current.ready = true;
+        setSyncStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, authToken]);
+
+  const cloudState = useMemo<CloudState>(
+    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks }),
+    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks]
+  );
+
+  // Debounced push when anything changes
+  useEffect(() => {
+    if (!isAuthenticated || !cloudSyncRef.current.ready) return;
+    const blob = JSON.stringify(cloudState);
+    if (blob === cloudSyncRef.current.lastServerBlob) return;
+    setSyncStatus('syncing');
+    const handle = window.setTimeout(() => {
+      fetch('/api/state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+        body: blob,
+      })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then(({ state }) => {
+          if (state && typeof state === 'object') {
+            const { lastModified, ...data } = state as CloudState & { lastModified?: number };
+            cloudSyncRef.current.lastServerBlob = JSON.stringify(data);
+            cloudSyncRef.current.lastModified = lastModified || Date.now();
+          }
+          setSyncStatus('synced');
+        })
+        .catch(() => setSyncStatus('error'));
+    }, 800);
+    return () => window.clearTimeout(handle);
+  }, [cloudState, isAuthenticated, authToken]);
+
+  // Poll every 30s (and on tab refocus) for remote changes
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const pull = () => {
+      if (document.visibilityState !== 'visible') return;
+      fetch('/api/state', { headers: { Authorization: `Bearer ${authToken}` } })
+        .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+        .then(({ state }) => {
+          if (!state || typeof state !== 'object') return;
+          const { lastModified, ...data } = state as CloudState & { lastModified?: number };
+          if ((lastModified || 0) <= cloudSyncRef.current.lastModified) return;
+          applyRemote(data);
+          cloudSyncRef.current.lastServerBlob = JSON.stringify(data);
+          cloudSyncRef.current.lastModified = lastModified || 0;
+        })
+        .catch(() => {});
+    };
+    const interval = window.setInterval(pull, 30000);
+    document.addEventListener('visibilitychange', pull);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', pull);
+    };
+  }, [isAuthenticated, authToken]);
+
   if (!isAuthenticated) {
     return (
       <div className="app-wrapper">
@@ -287,6 +445,7 @@ export default function App() {
       <GlassCard className="app-header" style={{ borderRadius: '0px 0px 16px 16px', borderTop: 'none' }}>
         <div className="brand-section">
           <span className="brand-title">Productivity & Execution Planning</span>
+          <SyncBadge status={syncStatus} />
         </div>
 
         {/* Tab Controls */}
