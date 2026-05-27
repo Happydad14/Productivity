@@ -92,16 +92,26 @@ function findZoneAt(x: number, y: number): Zone | null {
   return null;
 }
 
+export interface TouchDragCallbacks {
+  /** Fires once the long-press elapses and the drag actually starts. */
+  onStart?: () => void;
+  /** Fires when the drag ends (drop, cancel, or aborted long-press doesn't fire). */
+  onEnd?: () => void;
+}
+
 /**
  * Wire up a touch-driven drag for a source element. Call from `onTouchStart`.
  * - `payload` mirrors what `dataTransfer.setData('text/plain', ...)` would carry.
  * - Drag is gated by a long press; small movements within 350ms abort it so
  *   scrolling and taps still work normally.
+ * - `callbacks.onStart` fires only after the long-press elapses; `onEnd`
+ *   fires on drop/cancel and only if `onStart` already fired.
  */
 export function attachTouchDrag(
   payload: string,
   sourceEl: HTMLElement,
   startTouch: { clientX: number; clientY: number },
+  callbacks?: TouchDragCallbacks,
 ) {
   let started = false;
   const startX = startTouch.clientX;
@@ -144,6 +154,7 @@ export function attachTouchDrag(
     } catch {
       /* haptic not supported */
     }
+    callbacks?.onStart?.();
   };
 
   const teardown = () => {
@@ -160,6 +171,7 @@ export function attachTouchDrag(
       dragState.clone.remove();
       dragState = null;
     }
+    if (started) callbacks?.onEnd?.();
   };
 
   const onMove = (e: TouchEvent) => {

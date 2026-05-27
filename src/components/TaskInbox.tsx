@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { attachTouchDrag } from '../touchDnd';
+import { encodePayload } from '../dndPayload';
 
 interface TaskInboxProps {
   items: string[];
@@ -12,6 +13,10 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
+  // When a chip drag is in flight the panel slides off-screen so the user
+  // can see (and drop onto) the columns underneath — Health & Fitness in
+  // particular sits entirely behind the panel on widescreen.
+  const [isDragHiding, setIsDragHiding] = useState(false);
 
   const addItem = () => {
     const trimmed = newItem.trim();
@@ -59,7 +64,10 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
       </button>
 
       {/* Slide-in panel */}
-      <div className={`inbox-panel ${isOpen ? 'inbox-panel-open' : ''}`} aria-hidden={!isOpen}>
+      <div
+        className={`inbox-panel ${isOpen ? 'inbox-panel-open' : ''} ${isDragHiding ? 'inbox-panel-drag-hide' : ''}`}
+        aria-hidden={!isOpen}
+      >
         <div className="inbox-panel-header">
           <div className="inbox-panel-title">
             <span className="inbox-panel-icon">📥</span>
@@ -133,15 +141,36 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
                 className={`inbox-chip ${draggingIdx === idx ? 'inbox-chip-dragging' : ''}`}
                 draggable={true}
                 onDragStart={(e) => {
-                  e.dataTransfer.setData('text/plain', item);
-                  e.dataTransfer.effectAllowed = 'copy';
+                  e.dataTransfer.setData(
+                    'text/plain',
+                    encodePayload({ kind: 'inbox', title: item, index: idx }),
+                  );
+                  e.dataTransfer.effectAllowed = 'move';
                   setDraggingIdx(idx);
+                  setIsDragHiding(true);
                 }}
-                onDragEnd={() => setDraggingIdx(null)}
+                onDragEnd={() => {
+                  setDraggingIdx(null);
+                  setIsDragHiding(false);
+                }}
                 onTouchStart={(e) => {
                   const touch = e.touches[0];
                   if (!touch) return;
-                  attachTouchDrag(item, e.currentTarget, touch);
+                  attachTouchDrag(
+                    encodePayload({ kind: 'inbox', title: item, index: idx }),
+                    e.currentTarget,
+                    touch,
+                    {
+                      onStart: () => {
+                        setDraggingIdx(idx);
+                        setIsDragHiding(true);
+                      },
+                      onEnd: () => {
+                        setDraggingIdx(null);
+                        setIsDragHiding(false);
+                      },
+                    },
+                  );
                 }}
                 title="Drag into a bucket"
               >

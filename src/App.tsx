@@ -319,6 +319,8 @@ export default function App() {
             setPrioritiesWeek={setPrioritiesWeek}
             prioritiesMonth={prioritiesMonth}
             setPrioritiesMonth={setPrioritiesMonth}
+            inboxTasks={inboxTasks}
+            setInboxTasks={setInboxTasks}
           />
         )}
         {activeTab === 'health' && (

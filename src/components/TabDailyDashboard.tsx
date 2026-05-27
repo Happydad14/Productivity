@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { TouchDropZone } from './TouchDropZone';
 import { attachTouchDrag } from '../touchDnd';
+import { encodePayload, decodePayload } from '../dndPayload';
 
 export interface Task {
   id: string;
@@ -21,6 +22,8 @@ interface TabDailyDashboardProps {
   setPrioritiesWeek: React.Dispatch<React.SetStateAction<string[]>>;
   prioritiesMonth: string[];
   setPrioritiesMonth: React.Dispatch<React.SetStateAction<string[]>>;
+  inboxTasks: string[];
+  setInboxTasks: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const CATEGORIES = [
@@ -37,6 +40,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   setPrioritiesWeek,
   prioritiesMonth,
   setPrioritiesMonth,
+  inboxTasks: _inboxTasks,
+  setInboxTasks,
 }) => {
   const [newTasks, setNewTasks] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,11 +49,24 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
 
   const handleBucketDrop = (
-    title: string,
+    raw: string,
     category: 'work' | 'career' | 'family' | 'health',
     timeframe: 'target' | 'near' | 'medium-long'
   ) => {
+    setDragOverBucket(null);
+    const payload = decodePayload(raw);
+    const title = payload.title?.trim();
     if (!title) return;
+
+    // Existing task being moved between buckets: update in place, don't copy.
+    if (payload.kind === 'task') {
+      setTasks(prev =>
+        prev.map(t =>
+          t.id === payload.taskId ? { ...t, category, timeframe } : t,
+        ),
+      );
+      return;
+    }
 
     const todayStr = new Date().toLocaleDateString('en-US', {
       month: '2-digit',
@@ -58,7 +76,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
 
     const newTask: Task = {
       id: crypto.randomUUID(),
-      title: title.trim(),
+      title,
       category,
       timeframe,
       isCompleted: false,
@@ -66,7 +84,78 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
     };
 
     setTasks(prev => [...prev, newTask]);
-    setDragOverBucket(null);
+
+    // Drag came from the inbox: remove that entry. Match by index when it's
+    // still valid (same title at that slot) so we don't trip on duplicates;
+    // otherwise fall back to first title match.
+    if (payload.kind === 'inbox') {
+      setInboxTasks(prev => {
+        if (prev[payload.index] === payload.title) {
+          return prev.filter((_, i) => i !== payload.index);
+        }
+        const firstMatch = prev.indexOf(payload.title);
+        return firstMatch === -1 ? prev : prev.filter((_, i) => i !== firstMatch);
+      });
+    }
+  };
+
+  const handlePriorityDrop = (
+    targetList: 'week' | 'month',
+    targetIdx: number,
+    raw: string,
+  ) => {
+    setDragOverIndex(null);
+    const payload = decodePayload(raw);
+    const title = payload.title?.trim();
+    if (!title) return;
+
+    // Priority → priority: reorder via splice/insert. Works within a list and
+    // across week ↔ month.
+    if (payload.kind === 'priority') {
+      const padTo5 = (arr: string[]) => {
+        while (arr.length < 5) arr.push('');
+        arr.length = 5;
+        return arr;
+      };
+
+      if (payload.list === targetList) {
+        if (payload.index === targetIdx) return;
+        const base = targetList === 'week' ? prioritiesWeek : prioritiesMonth;
+        const arr = [...base];
+        const [moved] = arr.splice(payload.index, 1);
+        arr.splice(targetIdx, 0, moved);
+        padTo5(arr);
+        if (targetList === 'week') setPrioritiesWeek(arr);
+        else setPrioritiesMonth(arr);
+        return;
+      }
+
+      // Cross-list move
+      const src = payload.list === 'week' ? [...prioritiesWeek] : [...prioritiesMonth];
+      const dst = targetList === 'week' ? [...prioritiesWeek] : [...prioritiesMonth];
+      src.splice(payload.index, 1);
+      dst.splice(targetIdx, 0, payload.title);
+      padTo5(src);
+      padTo5(dst);
+      if (payload.list === 'week') setPrioritiesWeek(src);
+      else setPrioritiesMonth(src);
+      if (targetList === 'week') setPrioritiesWeek(dst);
+      else setPrioritiesMonth(dst);
+      return;
+    }
+
+    // Inbox / task / text drop: set the slot to that title.
+    handlePriorityChange(targetIdx, title, targetList);
+
+    if (payload.kind === 'inbox') {
+      setInboxTasks(prev => {
+        if (prev[payload.index] === payload.title) {
+          return prev.filter((_, i) => i !== payload.index);
+        }
+        const firstMatch = prev.indexOf(payload.title);
+        return firstMatch === -1 ? prev : prev.filter((_, i) => i !== firstMatch);
+      });
+    }
   };
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
@@ -101,6 +190,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   };
 
   const deleteTask = (id: string) => {
+    const target = tasks.find(t => t.id === id);
+    const label = target ? `"${target.title}"` : 'this task';
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
     setTasks(prev => prev.filter(t => t.id !== id));
   };
 
@@ -386,11 +478,36 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   className={`priority-li ${isDragOver ? 'drag-active-week' : ''} ${p ? 'has-value' : ''}`}
                   onPayloadEnter={() => setDragOverIndex({ index: idx, type: 'week' })}
                   onPayloadLeave={() => setDragOverIndex(null)}
-                  onPayloadDrop={(title) => {
-                    handlePriorityChange(idx, title, 'week');
-                    setDragOverIndex(null);
-                  }}
+                  onPayloadDrop={(raw) => handlePriorityDrop('week', idx, raw)}
                 >
+                  {p && (
+                    <span
+                      className="priority-grip"
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder priority"
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(
+                          'text/plain',
+                          encodePayload({ kind: 'priority', title: p, list: 'week', index: idx }),
+                        );
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        if (!touch) return;
+                        const li = e.currentTarget.parentElement as HTMLElement | null;
+                        if (!li) return;
+                        attachTouchDrag(
+                          encodePayload({ kind: 'priority', title: p, list: 'week', index: idx }),
+                          li,
+                          touch,
+                        );
+                      }}
+                    >
+                      ⋮⋮
+                    </span>
+                  )}
                   <input
                     type="text"
                     value={p}
@@ -426,11 +543,36 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   className={`priority-li ${isDragOver ? 'drag-active-month' : ''} ${p ? 'has-value' : ''}`}
                   onPayloadEnter={() => setDragOverIndex({ index: idx, type: 'month' })}
                   onPayloadLeave={() => setDragOverIndex(null)}
-                  onPayloadDrop={(title) => {
-                    handlePriorityChange(idx, title, 'month');
-                    setDragOverIndex(null);
-                  }}
+                  onPayloadDrop={(raw) => handlePriorityDrop('month', idx, raw)}
                 >
+                  {p && (
+                    <span
+                      className="priority-grip"
+                      title="Drag to reorder"
+                      aria-label="Drag to reorder priority"
+                      draggable={true}
+                      onDragStart={(e) => {
+                        e.dataTransfer.setData(
+                          'text/plain',
+                          encodePayload({ kind: 'priority', title: p, list: 'month', index: idx }),
+                        );
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        if (!touch) return;
+                        const li = e.currentTarget.parentElement as HTMLElement | null;
+                        if (!li) return;
+                        attachTouchDrag(
+                          encodePayload({ kind: 'priority', title: p, list: 'month', index: idx }),
+                          li,
+                          touch,
+                        );
+                      }}
+                    >
+                      ⋮⋮
+                    </span>
+                  )}
                   <input
                     type="text"
                     value={p}
@@ -556,12 +698,21 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       key={task.id}
                       className={`task-item task-${task.category} target-item-row`}
                       draggable={editingTaskId !== task.id}
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
+                      onDragStart={(e) =>
+                        e.dataTransfer.setData(
+                          'text/plain',
+                          encodePayload({ kind: 'task', title: task.title, taskId: task.id }),
+                        )
+                      }
                       onTouchStart={(e) => {
                         if (editingTaskId === task.id) return;
                         const touch = e.touches[0];
                         if (!touch) return;
-                        attachTouchDrag(task.title, e.currentTarget, touch);
+                        attachTouchDrag(
+                          encodePayload({ kind: 'task', title: task.title, taskId: task.id }),
+                          e.currentTarget,
+                          touch,
+                        );
                       }}
                     >
                       {editingTaskId === task.id ? (
@@ -639,13 +790,22 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   {nearTerm.map(task => (
                     <div
                       key={task.id}
-                      className={`task-item task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
+                      className={`task-item task-item-with-actions task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
                       draggable={true}
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
+                      onDragStart={(e) =>
+                        e.dataTransfer.setData(
+                          'text/plain',
+                          encodePayload({ kind: 'task', title: task.title, taskId: task.id }),
+                        )
+                      }
                       onTouchStart={(e) => {
                         const touch = e.touches[0];
                         if (!touch) return;
-                        attachTouchDrag(task.title, e.currentTarget, touch);
+                        attachTouchDrag(
+                          encodePayload({ kind: 'task', title: task.title, taskId: task.id }),
+                          e.currentTarget,
+                          touch,
+                        );
                       }}
                     >
                       <label className="checkbox-container">
@@ -661,6 +821,17 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                           <span className="task-date">{task.dateAdded}</span>
                         </div>
                       </label>
+                      <button
+                        className="task-delete-btn task-row-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTask(task.id);
+                        }}
+                        title="Delete task"
+                        aria-label="Delete task"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
                   <div className="add-task-row">
@@ -689,13 +860,22 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   {mediumLong.map(task => (
                     <div
                       key={task.id}
-                      className={`task-item task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
+                      className={`task-item task-item-with-actions task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
                       draggable={true}
-                      onDragStart={(e) => e.dataTransfer.setData('text/plain', task.title)}
+                      onDragStart={(e) =>
+                        e.dataTransfer.setData(
+                          'text/plain',
+                          encodePayload({ kind: 'task', title: task.title, taskId: task.id }),
+                        )
+                      }
                       onTouchStart={(e) => {
                         const touch = e.touches[0];
                         if (!touch) return;
-                        attachTouchDrag(task.title, e.currentTarget, touch);
+                        attachTouchDrag(
+                          encodePayload({ kind: 'task', title: task.title, taskId: task.id }),
+                          e.currentTarget,
+                          touch,
+                        );
                       }}
                     >
                       <label className="checkbox-container">
@@ -711,6 +891,17 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                           <span className="task-date">{task.dateAdded}</span>
                         </div>
                       </label>
+                      <button
+                        className="task-delete-btn task-row-delete-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteTask(task.id);
+                        }}
+                        title="Delete task"
+                        aria-label="Delete task"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ))}
                   <div className="add-task-row">
