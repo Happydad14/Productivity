@@ -66,11 +66,20 @@ const LONG_PRESS_MS = 350;
 const PRE_DRAG_CANCEL_PX = 8; // movement before long-press → user is scrolling, abort
 
 function findZoneAt(x: number, y: number): Zone | null {
-  // Hide the clone so elementFromPoint sees the real drop target.
+  // Take the clone out of the hit-test. `pointer-events: none` is not enough
+  // on iPad Safari — `elementFromPoint` can still return the clone, which
+  // makes the drop look like it "missed" and snap back to the source.
+  // `display: none` removes it from layout entirely, which is reliable.
   const clone = dragState?.clone;
-  if (clone) clone.style.visibility = 'hidden';
+  let prevDisplay: string | undefined;
+  if (clone) {
+    prevDisplay = clone.style.display;
+    clone.style.display = 'none';
+  }
   const target = document.elementFromPoint(x, y);
-  if (clone) clone.style.visibility = 'visible';
+  if (clone) {
+    clone.style.display = prevDisplay ?? '';
+  }
   if (!target) return null;
   for (const z of zones) {
     if (z.el.contains(target)) return z;
@@ -179,7 +188,12 @@ export function attachTouchDrag(
   const onEnd = (e: TouchEvent) => {
     if (started && dragState) {
       const t = e.changedTouches[0];
-      const dropZone = t ? findZoneAt(t.clientX, t.clientY) : dragState.currentZone;
+      // Prefer fresh hit-test, but fall back to the zone tracked during the
+      // last touchmove — touchmove already proved the finger was over it
+      // (visual highlight fired), so it's reliable when the final hit-test
+      // misses for any reason.
+      const hit = t ? findZoneAt(t.clientX, t.clientY) : null;
+      const dropZone = hit ?? dragState.currentZone;
       // Clear hover state on whatever zone the cursor was last over.
       if (dragState.currentZone && dragState.currentZone !== dropZone) {
         dragState.currentZone.handlersRef.current.onLeave?.();
