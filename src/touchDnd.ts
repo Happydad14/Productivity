@@ -76,13 +76,18 @@ function findZoneAt(x: number, y: number): Zone | null {
     prevDisplay = clone.style.display;
     clone.style.display = 'none';
   }
-  const target = document.elementFromPoint(x, y);
+  // Use elementsFromPoint (plural) so we can see through overlays that sit
+  // on top of buckets — e.g. the inbox backdrop (`inset: 0`, z-index 998)
+  // covers the dashboard while the inbox panel is open, and would otherwise
+  // intercept every drop. Walk the stack top-down until we hit a zone.
+  const targets = document.elementsFromPoint(x, y);
   if (clone) {
     clone.style.display = prevDisplay ?? '';
   }
-  if (!target) return null;
-  for (const z of zones) {
-    if (z.el.contains(target)) return z;
+  for (const target of targets) {
+    for (const z of zones) {
+      if (z.el.contains(target)) return z;
+    }
   }
   return null;
 }

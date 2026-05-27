@@ -2394,9 +2394,7 @@ body {
 .inbox-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.32);
   z-index: 998;
   animation: inbox-fade-in 0.25s ease;
 }
