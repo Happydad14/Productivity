@@ -697,6 +697,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     <div
                       key={task.id}
                       className={`task-item task-${task.category} target-item-row`}
+                      title={`Added ${task.dateAdded}`}
                       draggable={editingTaskId !== task.id}
                       onDragStart={(e) =>
                         e.dataTransfer.setData(
@@ -730,13 +731,13 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         />
                       ) : (
                         <div className="target-content-wrapper">
-                          <div 
-                            className="target-text-click-zone" 
-                            onDoubleClick={() => {
+                          <div
+                            className="target-text-click-zone"
+                            onClick={() => {
                               setEditingTaskId(task.id);
                               setEditingText(task.title);
                             }}
-                            title="Double-click to edit target"
+                            title="Click to edit target"
                           >
                             <span className="task-text">{task.title}</span>
                             <span className="task-date">{task.dateAdded}</span>
@@ -791,7 +792,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     <div
                       key={task.id}
                       className={`task-item task-item-with-actions task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
-                      draggable={true}
+                      title={`Added ${task.dateAdded}`}
+                      draggable={editingTaskId !== task.id}
                       onDragStart={(e) =>
                         e.dataTransfer.setData(
                           'text/plain',
@@ -799,6 +801,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         )
                       }
                       onTouchStart={(e) => {
+                        if (editingTaskId === task.id) return;
                         const touch = e.touches[0];
                         if (!touch) return;
                         attachTouchDrag(
@@ -817,8 +820,36 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         <span className="checkbox-custom" style={{ borderColor: cat.color }}></span>
                         {renderTierIcon(task)}
                         <div className="task-text-container">
-                          <span className="task-text">{task.title}</span>
-                          <span className="task-date">{task.dateAdded}</span>
+                          {editingTaskId === task.id ? (
+                            <input
+                              type="text"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveTaskEdit(task.id, editingText);
+                                if (e.key === 'Escape') setEditingTaskId(null);
+                              }}
+                              onBlur={() => saveTaskEdit(task.id, editingText)}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              className="edit-task-inline-input"
+                              autoFocus
+                            />
+                          ) : (
+                            <>
+                              <span
+                                className="task-text"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setEditingTaskId(task.id);
+                                  setEditingText(task.title);
+                                }}
+                              >
+                                {task.title}
+                              </span>
+                              <span className="task-date">{task.dateAdded}</span>
+                            </>
+                          )}
                         </div>
                       </label>
                       <button
@@ -861,7 +892,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                     <div
                       key={task.id}
                       className={`task-item task-item-with-actions task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
-                      draggable={true}
+                      title={`Added ${task.dateAdded}`}
+                      draggable={editingTaskId !== task.id}
                       onDragStart={(e) =>
                         e.dataTransfer.setData(
                           'text/plain',
@@ -869,6 +901,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         )
                       }
                       onTouchStart={(e) => {
+                        if (editingTaskId === task.id) return;
                         const touch = e.touches[0];
                         if (!touch) return;
                         attachTouchDrag(
@@ -887,8 +920,36 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         <span className="checkbox-custom" style={{ borderColor: cat.color }}></span>
                         {renderTierIcon(task)}
                         <div className="task-text-container">
-                          <span className="task-text">{task.title}</span>
-                          <span className="task-date">{task.dateAdded}</span>
+                          {editingTaskId === task.id ? (
+                            <input
+                              type="text"
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') saveTaskEdit(task.id, editingText);
+                                if (e.key === 'Escape') setEditingTaskId(null);
+                              }}
+                              onBlur={() => saveTaskEdit(task.id, editingText)}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                              className="edit-task-inline-input"
+                              autoFocus
+                            />
+                          ) : (
+                            <>
+                              <span
+                                className="task-text"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setEditingTaskId(task.id);
+                                  setEditingText(task.title);
+                                }}
+                              >
+                                {task.title}
+                              </span>
+                              <span className="task-date">{task.dateAdded}</span>
+                            </>
+                          )}
                         </div>
                       </label>
                       <button

@@ -17,6 +17,15 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
   // can see (and drop onto) the columns underneath — Health & Fitness in
   // particular sits entirely behind the panel on widescreen.
   const [isDragHiding, setIsDragHiding] = useState(false);
+  const [editingIdx, setEditingIdx] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState('');
+
+  const saveItemEdit = (idx: number, newText: string) => {
+    const trimmed = newText.trim();
+    setEditingIdx(null);
+    if (!trimmed) return;
+    setItems(prev => prev.map((it, i) => (i === idx ? trimmed : it)));
+  };
 
   const addItem = () => {
     const trimmed = newItem.trim();
@@ -139,7 +148,7 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
               <div
                 key={`${idx}-${item}`}
                 className={`inbox-chip ${draggingIdx === idx ? 'inbox-chip-dragging' : ''}`}
-                draggable={true}
+                draggable={editingIdx !== idx}
                 onDragStart={(e) => {
                   e.dataTransfer.setData(
                     'text/plain',
@@ -154,6 +163,7 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
                   setIsDragHiding(false);
                 }}
                 onTouchStart={(e) => {
+                  if (editingIdx === idx) return;
                   const touch = e.touches[0];
                   if (!touch) return;
                   attachTouchDrag(
@@ -172,13 +182,40 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
                     },
                   );
                 }}
-                title="Drag into a bucket"
+                title={editingIdx === idx ? '' : 'Click text to edit · drag chip to a bucket'}
               >
                 <span className="inbox-chip-grip" aria-hidden="true">⋮⋮</span>
-                <span className="inbox-chip-text">{item}</span>
+                {editingIdx === idx ? (
+                  <input
+                    type="text"
+                    value={editingText}
+                    onChange={(e) => setEditingText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveItemEdit(idx, editingText);
+                      if (e.key === 'Escape') setEditingIdx(null);
+                    }}
+                    onBlur={() => saveItemEdit(idx, editingText)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="edit-task-inline-input inbox-chip-edit-input"
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className="inbox-chip-text"
+                    onClick={() => {
+                      setEditingIdx(idx);
+                      setEditingText(item);
+                    }}
+                  >
+                    {item}
+                  </span>
+                )}
                 <button
                   className="inbox-chip-delete"
-                  onClick={() => deleteItem(idx)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteItem(idx);
+                  }}
                   title="Remove from inbox"
                   aria-label="Delete inbox item"
                 >

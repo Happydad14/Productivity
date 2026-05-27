@@ -130,7 +130,30 @@
 [data-theme='light-neumorphic'] .priority-hint { color: #8a7959; }
 [data-theme='light-neumorphic'] .priority-input { color: #2d2418; }
 [data-theme='light-neumorphic'] .priority-input:focus { border-bottom-color: rgba(124, 58, 237, 0.35); }
-[data-theme='light-neumorphic'] .priority-list li.priority-li.has-value { background: rgba(255, 252, 245, 0.45); }
+[data-theme='light-neumorphic'] .priority-list li.priority-li {
+  background: #ece5d8;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: none;
+  box-shadow:
+    4px 4px 10px rgba(168, 145, 100, 0.22),
+    -4px -4px 10px rgba(255, 252, 245, 0.85),
+    inset 1px 1px 1px rgba(255, 252, 245, 0.5);
+}
+[data-theme='light-neumorphic'] .priority-list li.priority-li.has-value {
+  background: #f1ead9;
+  box-shadow:
+    4px 4px 10px rgba(168, 145, 100, 0.26),
+    -4px -4px 10px rgba(255, 252, 245, 0.9),
+    inset 1px 1px 1px rgba(255, 252, 245, 0.5);
+}
+[data-theme='light-neumorphic'] .priority-list li.priority-li:hover {
+  background: #f1ead9;
+  box-shadow:
+    5px 5px 12px rgba(168, 145, 100, 0.30),
+    -5px -5px 12px rgba(255, 252, 245, 0.92),
+    inset 1px 1px 1px rgba(255, 252, 245, 0.5);
+}
 [data-theme='light-neumorphic'] .priority-clear-btn { color: #8a7959; }
 
 /* Mini calendar */
@@ -780,37 +803,62 @@ body {
 }
 
 .priority-list {
-  padding-left: 18px;
+  padding-left: 22px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 6px;
 }
 
 .priority-list li.priority-li {
   position: relative;
-  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-  border-radius: 5px;
-  border: 1px solid transparent;
-  padding: 0 2px;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  padding: 5px 10px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
 .priority-list li.priority-li.has-value {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.20);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.24),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.05),
+    0 6px 18px rgba(0, 0, 0, 0.45);
+}
+
+.priority-list li.priority-li:hover {
+  border-color: rgba(255, 255, 255, 0.24);
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.26),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.06),
+    0 8px 22px rgba(0, 0, 0, 0.5);
 }
 
 .priority-list li.drag-active-week {
-  background: rgba(14, 165, 233, 0.18) !important;
-  border-color: rgba(14, 165, 233, 0.55);
-  box-shadow: 0 0 10px rgba(14, 165, 233, 0.35);
+  background: rgba(14, 165, 233, 0.22) !important;
+  border-color: rgba(14, 165, 233, 0.6) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.20),
+    0 0 18px rgba(14, 165, 233, 0.45) !important;
 }
 
 .priority-list li.drag-active-month {
-  background: rgba(168, 85, 247, 0.18) !important;
-  border-color: rgba(168, 85, 247, 0.55);
-  box-shadow: 0 0 10px rgba(168, 85, 247, 0.35);
+  background: rgba(168, 85, 247, 0.22) !important;
+  border-color: rgba(168, 85, 247, 0.6) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.20),
+    0 0 18px rgba(168, 85, 247, 0.45) !important;
 }
 
 .priority-input {
@@ -998,12 +1046,22 @@ body {
   font-weight: 500;
   line-height: 1.1;
   transition: color 0.2s ease;
+  cursor: text;
 }
 
 .task-date {
   font-size: 0.6rem;
   color: var(--text-dim);
   margin-left: 8px;
+  display: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.task-item:hover .task-date,
+.target-item-row:hover .task-date {
+  display: inline-block;
+  opacity: 0.85;
 }
 
 .task-item {
@@ -2688,6 +2746,12 @@ body {
   flex: 1;
   word-break: break-word;
   line-height: 1.35;
+  cursor: text;
+}
+
+.inbox-chip-edit-input {
+  flex: 1;
+  min-width: 0;
 }
 
 .inbox-chip-delete {
