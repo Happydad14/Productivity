@@ -76,9 +76,31 @@ const INITIAL_GOALS = (): Goal[] => [
   { id: 'g9', title: 'Run an official marathon under 4 hours', category: 'health', term: 'long', isAchieved: false, dateAdded: '05/01/26' },
 ];
 
+const AUTH_TOKEN_KEY = 'xp_auth_token';
+
+// Derive a stable, deterministic token from the access key so the stored
+// token survives redeploys (it lives in localStorage, not sessionStorage)
+// but is automatically invalidated when VITE_ACCESS_KEY is rotated.
+const deriveAuthToken = (key: string): string => {
+  let h = 5381;
+  for (let i = 0; i < key.length; i++) {
+    h = ((h << 5) + h) ^ key.charCodeAt(i);
+  }
+  return `v1:${(h >>> 0).toString(36)}:${key.length}`;
+};
+
+const getExpectedAuthToken = (): string => {
+  const correctKey = import.meta.env.VITE_ACCESS_KEY || 'productivity2026';
+  return deriveAuthToken(correctKey);
+};
+
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('xp_session_active') === 'true';
+    try {
+      return localStorage.getItem(AUTH_TOKEN_KEY) === getExpectedAuthToken();
+    } catch {
+      return false;
+    }
   });
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -86,9 +108,13 @@ export default function App() {
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const correctKey = import.meta.env.VITE_ACCESS_KEY || "productivity2026";
+    const correctKey = import.meta.env.VITE_ACCESS_KEY || 'productivity2026';
     if (password === correctKey) {
-      sessionStorage.setItem('xp_session_active', 'true');
+      try {
+        localStorage.setItem(AUTH_TOKEN_KEY, deriveAuthToken(correctKey));
+      } catch {
+        // Quota / privacy-mode failures: still let this tab in.
+      }
       setIsAuthenticated(true);
       setLoginError(false);
     } else {
