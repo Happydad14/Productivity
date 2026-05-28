@@ -62,6 +62,16 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
     setItems(prev => prev.map((it, i) => (i === idx ? trimmed : it)));
   };
 
+  const moveItem = (idx: number, direction: -1 | 1) => {
+    setItems(prev => {
+      const target = idx + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = prev.slice();
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  };
+
   const addItem = () => {
     const trimmed = newItem.trim();
     if (!trimmed) return;
@@ -251,6 +261,32 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
                     {item}
                   </span>
                 )}
+                <div className="inbox-chip-reorder" aria-label="Reorder">
+                  <button
+                    className="inbox-chip-move"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveItem(idx, -1);
+                    }}
+                    disabled={idx === 0}
+                    title="Move up"
+                    aria-label="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    className="inbox-chip-move"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      moveItem(idx, 1);
+                    }}
+                    disabled={idx === items.length - 1}
+                    title="Move down"
+                    aria-label="Move down"
+                  >
+                    ↓
+                  </button>
+                </div>
                 <button
                   className="inbox-chip-delete"
                   onClick={(e) => {

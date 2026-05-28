@@ -1092,6 +1092,13 @@ body {
   cursor: text;
 }
 
+/* The whole text container is the click / long-press edit surface for
+   near-term and medium-long tasks (wider than the text span alone, so
+   touch targets reliably land on it). */
+.task-edit-zone {
+  cursor: text;
+}
+
 .task-date {
   font-size: 0.6rem;
   color: var(--text-dim);
@@ -2572,7 +2579,7 @@ body {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 380px;
+  width: 480px;
   max-width: 90vw;
   z-index: 999;
   background: rgba(8, 14, 30, 0.92);
@@ -2856,6 +2863,61 @@ body {
   opacity: 1 !important;
   color: #ff453a;
   background: rgba(255, 69, 58, 0.14);
+}
+
+/* Reorder ↑ / ↓ buttons — fade in on chip hover, stay visible on touch */
+.inbox-chip-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.inbox-chip:hover .inbox-chip-reorder {
+  opacity: 0.7;
+}
+
+.inbox-chip-move {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inbox-chip-move:hover:not(:disabled) {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.inbox-chip-move:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+@media (hover: none) {
+  /* No hover on touch — always show the arrows so taps reach them. */
+  .inbox-chip-reorder {
+    opacity: 0.7;
+  }
+}
+
+[data-theme='light-neumorphic'] .inbox-chip-move {
+  background: #ece5d8;
+  border: none;
+  color: #5a4a32;
+  box-shadow: 1px 1px 3px rgba(168, 145, 100, 0.22), -1px -1px 3px rgba(255, 252, 245, 0.85);
+}
+
+[data-theme='light-neumorphic'] .inbox-chip-move:hover:not(:disabled) {
+  color: #2d2418;
+  box-shadow: 2px 2px 4px rgba(168, 145, 100, 0.28), -2px -2px 4px rgba(255, 252, 245, 0.9);
 }
 
 /* Empty state */
@@ -3196,6 +3258,13 @@ body {
     min-width: 36px;
     min-height: 36px;
     font-size: 1rem;
+  }
+
+  .inbox-chip-move {
+    min-width: 32px;
+    min-height: 28px;
+    font-size: 0.95rem;
+    padding: 4px 8px;
   }
 
   .pill-undo,

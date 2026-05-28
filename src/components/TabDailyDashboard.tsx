@@ -868,7 +868,27 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         />
                         <span className="checkbox-custom" style={{ borderColor: cat.color }}></span>
                         {renderTierIcon(task)}
-                        <div className="task-text-container">
+                        <div
+                          className="task-text-container task-edit-zone"
+                          onClick={(e) => {
+                            if (editingTaskId === task.id) return;
+                            if (recentTouchRef.current) {
+                              // Synthetic click after a touch — let the click
+                              // bubble to the label so the checkbox still
+                              // toggles, but don't open edit mode here.
+                              return;
+                            }
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingTaskId(task.id);
+                            setEditingText(task.title);
+                          }}
+                          onTouchStart={editingTaskId === task.id ? undefined : beginLongPressEdit(task.id, task.title)}
+                          onTouchEnd={editingTaskId === task.id ? undefined : endTextTouch}
+                          onTouchMove={editingTaskId === task.id ? undefined : cancelLongPress}
+                          onTouchCancel={editingTaskId === task.id ? undefined : cancelLongPress}
+                          title={editingTaskId === task.id ? undefined : 'Click (desktop) or long-press (touch) to edit'}
+                        >
                           {editingTaskId === task.id ? (
                             <input
                               type="text"
@@ -885,28 +905,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                             />
                           ) : (
                             <>
-                              <span
-                                className="task-text"
-                                onClick={(e) => {
-                                  if (recentTouchRef.current) {
-                                    // Synthetic click after a tap — let the
-                                    // label still toggle the checkbox, just
-                                    // don't open edit mode.
-                                    return;
-                                  }
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setEditingTaskId(task.id);
-                                  setEditingText(task.title);
-                                }}
-                                onTouchStart={beginLongPressEdit(task.id, task.title)}
-                                onTouchEnd={endTextTouch}
-                                onTouchMove={cancelLongPress}
-                                onTouchCancel={cancelLongPress}
-                                title="Click (desktop) or long-press (touch) to edit"
-                              >
-                                {task.title}
-                              </span>
+                              <span className="task-text">{task.title}</span>
                               <span className="task-date">{task.dateAdded}</span>
                             </>
                           )}
@@ -979,7 +978,27 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         />
                         <span className="checkbox-custom" style={{ borderColor: cat.color }}></span>
                         {renderTierIcon(task)}
-                        <div className="task-text-container">
+                        <div
+                          className="task-text-container task-edit-zone"
+                          onClick={(e) => {
+                            if (editingTaskId === task.id) return;
+                            if (recentTouchRef.current) {
+                              // Synthetic click after a touch — let the click
+                              // bubble to the label so the checkbox still
+                              // toggles, but don't open edit mode here.
+                              return;
+                            }
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setEditingTaskId(task.id);
+                            setEditingText(task.title);
+                          }}
+                          onTouchStart={editingTaskId === task.id ? undefined : beginLongPressEdit(task.id, task.title)}
+                          onTouchEnd={editingTaskId === task.id ? undefined : endTextTouch}
+                          onTouchMove={editingTaskId === task.id ? undefined : cancelLongPress}
+                          onTouchCancel={editingTaskId === task.id ? undefined : cancelLongPress}
+                          title={editingTaskId === task.id ? undefined : 'Click (desktop) or long-press (touch) to edit'}
+                        >
                           {editingTaskId === task.id ? (
                             <input
                               type="text"
@@ -996,28 +1015,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                             />
                           ) : (
                             <>
-                              <span
-                                className="task-text"
-                                onClick={(e) => {
-                                  if (recentTouchRef.current) {
-                                    // Synthetic click after a tap — let the
-                                    // label still toggle the checkbox, just
-                                    // don't open edit mode.
-                                    return;
-                                  }
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setEditingTaskId(task.id);
-                                  setEditingText(task.title);
-                                }}
-                                onTouchStart={beginLongPressEdit(task.id, task.title)}
-                                onTouchEnd={endTextTouch}
-                                onTouchMove={cancelLongPress}
-                                onTouchCancel={cancelLongPress}
-                                title="Click (desktop) or long-press (touch) to edit"
-                              >
-                                {task.title}
-                              </span>
+                              <span className="task-text">{task.title}</span>
                               <span className="task-date">{task.dateAdded}</span>
                             </>
                           )}
