@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { attachTouchDrag } from '../touchDnd';
 import { encodePayload } from '../dndPayload';
 
@@ -19,6 +19,41 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
   const [isDragHiding, setIsDragHiding] = useState(false);
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editingText, setEditingText] = useState('');
+
+  // Long-press to edit on touch (500ms, beats the 350ms drag pickup when held
+  // on the text — stopPropagation keeps the chip body from also picking up
+  // for drag from the same gesture).
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+  const recentTouchRef = useRef(false);
+
+  const beginLongPressEdit = (idx: number, item: string) => (e: React.TouchEvent<HTMLElement>) => {
+    e.stopPropagation();
+    recentTouchRef.current = true;
+    longPressFiredRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      longPressTimerRef.current = null;
+      setEditingIdx(idx);
+      setEditingText(item);
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const endTextTouch = (e: React.TouchEvent<HTMLElement>) => {
+    cancelLongPress();
+    if (longPressFiredRef.current) e.preventDefault();
+    setTimeout(() => {
+      recentTouchRef.current = false;
+    }, 700);
+  };
 
   const saveItemEdit = (idx: number, newText: string) => {
     const trimmed = newText.trim();
@@ -203,9 +238,15 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
                   <span
                     className="inbox-chip-text"
                     onClick={() => {
+                      if (recentTouchRef.current) return;
                       setEditingIdx(idx);
                       setEditingText(item);
                     }}
+                    onTouchStart={beginLongPressEdit(idx, item)}
+                    onTouchEnd={endTextTouch}
+                    onTouchMove={cancelLongPress}
+                    onTouchCancel={cancelLongPress}
+                    title="Click (desktop) or long-press (touch) to edit"
                   >
                     {item}
                   </span>

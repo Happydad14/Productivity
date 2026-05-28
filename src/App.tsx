@@ -19,20 +19,27 @@ const INITIAL_PRIORITIES_MONTH: string[] = ['', '', '', '', ''];
 // One-time wipe key — bumping this value forces every browser to clear stored task/priority data on next load
 const DATA_RESET_VERSION = 'wipe-2026-05-26-clean-slate';
 
+// All habit history strictly before this Monday is wiped from storage; new
+// seed data also stops at this cutoff. YYYY-MM-DD so string-compare works.
+const HABIT_HISTORY_CUTOFF = '2026-05-25';
+const HABIT_HISTORY_WIPE_VERSION = `pre-${HABIT_HISTORY_CUTOFF}-v1`;
+
 // Helper to seed habit history dots so dashboard looks fully active ending today
-const seedHabitHistory = (density: number, skipDays: number[] = []) => {
+const seedHabitHistory = (density: number, skipDays: number[] = [], minDateKey: string = HABIT_HISTORY_CUTOFF) => {
   const history: Record<string, boolean> = {};
   const today = new Date();
-  
+
   for (let i = 0; i < 40; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    
+
     // Format YYYY-MM-DD
     const yyyy = d.getFullYear();
     const mm = String(d.getMonth() + 1).padStart(2, '0');
     const dd = String(d.getDate()).padStart(2, '0');
     const key = `${yyyy}-${mm}-${dd}`;
+
+    if (key < minDateKey) continue;
 
     const dayOfWeek = d.getDay(); // 0 is Sun, 6 is Sat
     if (skipDays.includes(dayOfWeek)) continue;
@@ -56,6 +63,34 @@ const INITIAL_HABITS = (): Habit[] => [
   { id: 'h7', name: 'Blood Pressure checked', target: 5, history: seedHabitHistory(0.8) },
   { id: 'h8', name: 'Take Supplements', target: 7, history: seedHabitHistory(0.8) },
 ];
+
+// Reusable filter: drop any history keys before the cutoff.
+const filterHabitHistoryToCutoff = (habits: Habit[]): Habit[] =>
+  habits.map(h => {
+    const filtered: Record<string, boolean> = {};
+    Object.entries(h.history || {}).forEach(([key, val]) => {
+      if (key >= HABIT_HISTORY_CUTOFF) filtered[key] = val;
+    });
+    return { ...h, history: filtered };
+  });
+
+// Strip any pre-cutoff dates out of stored habit history. Idempotent.
+const wipeHabitHistoryPreCutoff = () => {
+  if (typeof window === 'undefined') return;
+  if (localStorage.getItem('xp_habit_wipe_version') === HABIT_HISTORY_WIPE_VERSION) return;
+  const stored = localStorage.getItem('xp_habits');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored) as Array<Habit>;
+      const cleaned = filterHabitHistoryToCutoff(parsed);
+      localStorage.setItem('xp_habits', JSON.stringify(cleaned));
+    } catch {
+      // Corrupt JSON — leave the wipe-version flag unset so a later boot retries.
+      return;
+    }
+  }
+  localStorage.setItem('xp_habit_wipe_version', HABIT_HISTORY_WIPE_VERSION);
+};
 
 const INITIAL_GOALS = (): Goal[] => [
   // work
@@ -169,6 +204,10 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals'>('daily');
   const [theme, setTheme] = useState<'dark-glassmorphism' | 'light-neumorphic' | 'cyberpunk'>('dark-glassmorphism');
+  const [layoutMode, setLayoutMode] = useState<'1x4' | '2x2'>(() => {
+    const saved = localStorage.getItem('xp_layout_mode');
+    return saved === '2x2' || saved === '1x4' ? saved : '1x4';
+  });
 
   // One-time wipe of stale template data — runs once per browser when DATA_RESET_VERSION changes
   if (typeof window !== 'undefined' && localStorage.getItem('xp_data_reset_version') !== DATA_RESET_VERSION) {
@@ -177,6 +216,9 @@ export default function App() {
     localStorage.removeItem('xp_priorities_month');
     localStorage.setItem('xp_data_reset_version', DATA_RESET_VERSION);
   }
+
+  // Wipe pre-Monday habit history (must run before useState reads xp_habits)
+  wipeHabitHistoryPreCutoff();
 
   // Core app state
   const [tasks, setTasks] = useState<Task[]>(() => {
@@ -263,6 +305,10 @@ export default function App() {
     localStorage.setItem('xp_inbox_tasks', JSON.stringify(inboxTasks));
   }, [inboxTasks]);
 
+  useEffect(() => {
+    localStorage.setItem('xp_layout_mode', layoutMode);
+  }, [layoutMode]);
+
   // Apply theme to document element
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -292,7 +338,10 @@ export default function App() {
     if (Array.isArray(data.tasks)) setTasks(data.tasks);
     if (Array.isArray(data.prioritiesWeek)) setPrioritiesWeek(data.prioritiesWeek);
     if (Array.isArray(data.prioritiesMonth)) setPrioritiesMonth(data.prioritiesMonth);
-    if (Array.isArray(data.habits)) setHabits(data.habits);
+    // Re-apply the pre-Monday wipe to incoming cloud state so a dirty blob
+    // from another device can't resurrect cleared history. The next push
+    // will then send the cleaned version, converging the cloud.
+    if (Array.isArray(data.habits)) setHabits(filterHabitHistoryToCutoff(data.habits));
     if (Array.isArray(data.goals)) setGoals(data.goals);
     if (Array.isArray(data.inboxTasks)) setInboxTasks(data.inboxTasks);
   };
@@ -470,22 +519,32 @@ export default function App() {
           </button>
         </div>
 
-        {/* Theme Engine Switcher */}
+        {/* Theme + Layout switchers */}
         <div className="theme-selector-container">
+          {activeTab === 'daily' && (
+            <button
+              className="layout-toggle-btn"
+              onClick={() => setLayoutMode(layoutMode === '1x4' ? '2x2' : '1x4')}
+              title={layoutMode === '1x4' ? 'Switch to 2×2 grid' : 'Switch to single-row layout'}
+              aria-label="Toggle bucket layout"
+            >
+              {layoutMode === '1x4' ? '▦ 2×2' : '▤ 4-col'}
+            </button>
+          )}
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-dim)' }}>THEME:</span>
-          <button 
+          <button
             className={`theme-btn ${theme === 'dark-glassmorphism' ? 'active' : ''}`}
             onClick={() => setTheme('dark-glassmorphism')}
           >
             Dark Glass
           </button>
-          <button 
+          <button
             className={`theme-btn ${theme === 'light-neumorphic' ? 'active' : ''}`}
             onClick={() => setTheme('light-neumorphic')}
           >
             Light Neumorphic
           </button>
-          <button 
+          <button
             className={`theme-btn ${theme === 'cyberpunk' ? 'active' : ''}`}
             onClick={() => setTheme('cyberpunk')}
           >
@@ -506,6 +565,7 @@ export default function App() {
             setPrioritiesMonth={setPrioritiesMonth}
             inboxTasks={inboxTasks}
             setInboxTasks={setInboxTasks}
+            layoutMode={layoutMode}
           />
         )}
         {activeTab === 'health' && (

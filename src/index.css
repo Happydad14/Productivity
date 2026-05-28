@@ -666,6 +666,40 @@ body {
   color: #fff;
 }
 
+/* Layout (1×4 / 2×2) toggle in the header */
+.layout-toggle-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  margin-right: 4px;
+}
+
+.layout-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+[data-theme='light-neumorphic'] .layout-toggle-btn {
+  background: #ece5d8;
+  border: none;
+  color: #5a4a32;
+  box-shadow: 2px 2px 4px rgba(168, 145, 100, 0.22), -2px -2px 4px rgba(255, 252, 245, 0.85);
+}
+
+[data-theme='light-neumorphic'] .layout-toggle-btn:hover {
+  color: #2d2418;
+  box-shadow: 3px 3px 6px rgba(168, 145, 100, 0.28), -3px -3px 6px rgba(255, 252, 245, 0.9);
+}
+
 /* Main Layout Container */
 .container {
   max-width: 1400px;
@@ -932,12 +966,21 @@ body {
   cursor: grabbing;
 }
 
-/* Category grid columns */
+/* Category grid columns — layout toggled via .layout-1x4 / .layout-2x2 */
 .category-columns-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.category-columns-grid.layout-1x4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.category-columns-grid.layout-2x2 {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
 }
 
 .category-column {
@@ -1545,16 +1588,25 @@ body {
   color: var(--text-dim) !important;
 }
 
-.pill-undo {
+.pill-undo,
+.pill-delete {
   background: transparent;
   border: none;
   color: var(--text-dim);
   cursor: pointer;
   font-size: 0.7rem !important;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .pill-undo:hover {
   color: #fff;
+}
+
+.pill-delete:hover {
+  color: #ff453a;
+  background: rgba(255, 69, 58, 0.14);
 }
 
 /* Historical completions log table */
@@ -1668,7 +1720,8 @@ body {
   color: var(--text-dim);
 }
 
-.table-undo-btn {
+.table-undo-btn,
+.table-delete-btn {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   color: var(--text-muted);
@@ -1676,11 +1729,34 @@ body {
   padding: 2px 8px;
   border-radius: 4px;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.table-undo-btn {
+  margin-right: 4px;
 }
 
 .table-undo-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: #fff;
+}
+
+.table-delete-btn:hover {
+  background: rgba(255, 69, 58, 0.16);
+  border-color: rgba(255, 69, 58, 0.35);
+  color: #ff453a;
+}
+
+[data-theme='light-neumorphic'] .table-delete-btn {
+  background: #ece5d8;
+  border: none;
+  color: #b03d2e;
+  box-shadow: 2px 2px 4px rgba(168, 145, 100, 0.22), -2px -2px 4px rgba(255, 252, 245, 0.85);
+}
+
+[data-theme='light-neumorphic'] .table-delete-btn:hover {
+  background: #f5e2dd;
+  color: #c1392b;
 }
 
 .empty-table-row {
@@ -2944,8 +3020,10 @@ body {
     font-size: 0.95rem;
   }
 
-  /* 4-column buckets stack vertically */
-  .category-columns-grid {
+  /* 4-column buckets stack vertically (overrides layout-1x4 / layout-2x2) */
+  .category-columns-grid,
+  .category-columns-grid.layout-1x4,
+  .category-columns-grid.layout-2x2 {
     grid-template-columns: 1fr;
     gap: 14px;
   }
@@ -3118,6 +3196,24 @@ body {
     min-width: 36px;
     min-height: 36px;
     font-size: 1rem;
+  }
+
+  .pill-undo,
+  .pill-delete {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 0.9rem !important;
+  }
+
+  .table-undo-btn,
+  .table-delete-btn {
+    min-height: 32px;
+    padding: 4px 10px;
+  }
+
+  .layout-toggle-btn {
+    min-height: 36px;
+    padding: 6px 12px;
   }
 
   /* Inbox FAB respects iOS safe area */

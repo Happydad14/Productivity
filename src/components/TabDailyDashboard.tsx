@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { TouchDropZone } from './TouchDropZone';
 import { attachTouchDrag } from '../touchDnd';
@@ -24,6 +24,7 @@ interface TabDailyDashboardProps {
   setPrioritiesMonth: React.Dispatch<React.SetStateAction<string[]>>;
   inboxTasks: string[];
   setInboxTasks: React.Dispatch<React.SetStateAction<string[]>>;
+  layoutMode: '1x4' | '2x2';
 }
 
 const CATEGORIES = [
@@ -42,6 +43,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   setPrioritiesMonth,
   inboxTasks: _inboxTasks,
   setInboxTasks,
+  layoutMode,
 }) => {
   const [newTasks, setNewTasks] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -163,6 +165,48 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   // Targets section editing states
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+
+  // Long-press to edit on touch. The drag system already uses 350ms long-press;
+  // this fires at 500ms, and stopPropagation on touchstart keeps a hold on text
+  // from initiating a drag of the whole row (drag still works from blank area).
+  // recentTouchRef lets the onClick handlers tell a real mouse click from the
+  // synthetic click iOS fires after a tap — we suppress edit on the synthetic.
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+  const recentTouchRef = useRef(false);
+
+  const beginLongPressEdit = (taskId: string, title: string) => (e: React.TouchEvent<HTMLElement>) => {
+    e.stopPropagation();
+    recentTouchRef.current = true;
+    longPressFiredRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      longPressFiredRef.current = true;
+      longPressTimerRef.current = null;
+      setEditingTaskId(taskId);
+      setEditingText(title);
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  // When long-press already fired, suppress the trailing synthetic click so
+  // the row's checkbox doesn't also flip. recentTouchRef stays true past
+  // touchend so quick-tap clicks (which still fire) are also recognized.
+  const endTextTouch = (e: React.TouchEvent<HTMLElement>) => {
+    cancelLongPress();
+    if (longPressFiredRef.current) {
+      e.preventDefault();
+    }
+    setTimeout(() => {
+      recentTouchRef.current = false;
+    }, 700);
+  };
 
   // Bulk Evernote Import states
   const [isImportOpen, setIsImportOpen] = useState(false);
@@ -670,7 +714,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
       </div>
 
       {/* 4 Core Category Columns */}
-      <div className="category-columns-grid">
+      <div className={`category-columns-grid layout-${layoutMode}`}>
         {CATEGORIES.map(cat => {
           const catTasks = activeTasks.filter(t => t.category === cat.id);
           const targets = catTasks.filter(t => t.timeframe === 'target');
@@ -734,10 +778,15 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                           <div
                             className="target-text-click-zone"
                             onClick={() => {
+                              if (recentTouchRef.current) return;
                               setEditingTaskId(task.id);
                               setEditingText(task.title);
                             }}
-                            title="Click to edit target"
+                            onTouchStart={beginLongPressEdit(task.id, task.title)}
+                            onTouchEnd={endTextTouch}
+                            onTouchMove={cancelLongPress}
+                            onTouchCancel={cancelLongPress}
+                            title="Click (desktop) or long-press (touch) to edit"
                           >
                             <span className="task-text">{task.title}</span>
                             <span className="task-date">{task.dateAdded}</span>
@@ -839,11 +888,22 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                               <span
                                 className="task-text"
                                 onClick={(e) => {
+                                  if (recentTouchRef.current) {
+                                    // Synthetic click after a tap — let the
+                                    // label still toggle the checkbox, just
+                                    // don't open edit mode.
+                                    return;
+                                  }
                                   e.preventDefault();
                                   e.stopPropagation();
                                   setEditingTaskId(task.id);
                                   setEditingText(task.title);
                                 }}
+                                onTouchStart={beginLongPressEdit(task.id, task.title)}
+                                onTouchEnd={endTextTouch}
+                                onTouchMove={cancelLongPress}
+                                onTouchCancel={cancelLongPress}
+                                title="Click (desktop) or long-press (touch) to edit"
                               >
                                 {task.title}
                               </span>
@@ -939,11 +999,22 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                               <span
                                 className="task-text"
                                 onClick={(e) => {
+                                  if (recentTouchRef.current) {
+                                    // Synthetic click after a tap — let the
+                                    // label still toggle the checkbox, just
+                                    // don't open edit mode.
+                                    return;
+                                  }
                                   e.preventDefault();
                                   e.stopPropagation();
                                   setEditingTaskId(task.id);
                                   setEditingText(task.title);
                                 }}
+                                onTouchStart={beginLongPressEdit(task.id, task.title)}
+                                onTouchEnd={endTextTouch}
+                                onTouchMove={cancelLongPress}
+                                onTouchCancel={cancelLongPress}
+                                title="Click (desktop) or long-press (touch) to edit"
                               >
                                 {task.title}
                               </span>
@@ -1001,7 +1072,8 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   <span className="pill-title">{task.title}</span>
                   <span className="pill-category" style={{ color: cat?.color }}>{cat?.label}</span>
                   <span className="pill-date">{task.dateCompleted}</span>
-                  <button className="pill-undo" onClick={() => toggleTask(task.id)} title="Undo Completion">⎌</button>
+                  <button className="pill-undo" onClick={() => toggleTask(task.id)} title="Undo completion">⎌</button>
+                  <button className="pill-delete" onClick={() => deleteTask(task.id)} title="Delete permanently" aria-label="Delete completed task">✕</button>
                 </div>
               );
             })
@@ -1057,7 +1129,7 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                 <th className="sortable-th" onClick={() => handleSort('dateCompleted')} style={{ cursor: 'pointer' }}>
                   Completed {sortBy === 'dateCompleted' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
                 </th>
-                <th style={{ width: '80px', textAlign: 'center' }}>Undo</th>
+                <th style={{ width: '120px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1086,8 +1158,11 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                       <td className="date-cell">{task.dateAdded}</td>
                       <td className="date-cell">{task.dateCompleted}</td>
                       <td className="undo-cell">
-                        <button className="table-undo-btn" onClick={() => toggleTask(task.id)}>
+                        <button className="table-undo-btn" onClick={() => toggleTask(task.id)} title="Undo completion">
                           Undo
+                        </button>
+                        <button className="table-delete-btn" onClick={() => deleteTask(task.id)} title="Delete permanently" aria-label="Delete">
+                          ✕
                         </button>
                       </td>
                     </tr>
