@@ -45,6 +45,10 @@ export const TouchDropZone: React.FC<BaseProps> = ({
   };
   const onDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    // Inner zones must claim the drop so an outer zone (e.g., per-row inside
+    // a per-bucket) doesn't also fire — would double-handle inbox drops and
+    // re-run the bucket-level catch-all on top of a row-level reorder.
+    e.stopPropagation();
     const title = e.dataTransfer.getData('text/plain');
     if (title) onPayloadDrop(title);
   };

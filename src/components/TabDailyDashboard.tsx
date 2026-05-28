@@ -49,6 +49,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [dragOverIndex, setDragOverIndex] = useState<{ index: number; type: 'week' | 'month' } | null>(null);
   const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
+  const [dragOverRow, setDragOverRow] = useState<
+    { category: 'work' | 'career' | 'family' | 'health'; timeframe: 'target' | 'near' | 'medium-long'; index: number } | null
+  >(null);
 
   const handleBucketDrop = (
     raw: string,
@@ -90,6 +93,101 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
     // Drag came from the inbox: remove that entry. Match by index when it's
     // still valid (same title at that slot) so we don't trip on duplicates;
     // otherwise fall back to first title match.
+    if (payload.kind === 'inbox') {
+      setInboxTasks(prev => {
+        if (prev[payload.index] === payload.title) {
+          return prev.filter((_, i) => i !== payload.index);
+        }
+        const firstMatch = prev.indexOf(payload.title);
+        return firstMatch === -1 ? prev : prev.filter((_, i) => i !== firstMatch);
+      });
+    }
+  };
+
+  // Drop fired by a per-row TouchDropZone inside a section. Places the dragged
+  // task (or new inbox/text task) at a specific index within that section.
+  // Falls through to bucket behavior (append + clear inbox) when called with
+  // an out-of-range index.
+  const handleRowDrop = (
+    raw: string,
+    category: 'work' | 'career' | 'family' | 'health',
+    timeframe: 'target' | 'near' | 'medium-long',
+    targetIndexInBucket: number,
+  ) => {
+    setDragOverRow(null);
+    setDragOverBucket(null);
+    const payload = decodePayload(raw);
+    const title = payload.title?.trim();
+    if (!title) return;
+
+    if (payload.kind === 'task') {
+      setTasks(prev => {
+        const source = prev.find(t => t.id === payload.taskId);
+        if (!source) return prev;
+        const bucketWithSource = prev.filter(
+          t => t.category === category && t.timeframe === timeframe,
+        );
+        const targetTask = bucketWithSource[targetIndexInBucket];
+        if (targetTask?.id === source.id) return prev; // dropped on self
+        const without = prev.filter(t => t.id !== source.id);
+        const updated = { ...source, category, timeframe };
+        if (!targetTask) {
+          // Append to end of bucket (preserves global order for other buckets).
+          let lastIdx = -1;
+          for (let i = without.length - 1; i >= 0; i--) {
+            if (
+              without[i].category === category &&
+              without[i].timeframe === timeframe
+            ) {
+              lastIdx = i;
+              break;
+            }
+          }
+          if (lastIdx === -1) return [...without, updated];
+          return [
+            ...without.slice(0, lastIdx + 1),
+            updated,
+            ...without.slice(lastIdx + 1),
+          ];
+        }
+        const targetGlobalIdx = without.findIndex(t => t.id === targetTask.id);
+        return [
+          ...without.slice(0, targetGlobalIdx),
+          updated,
+          ...without.slice(targetGlobalIdx),
+        ];
+      });
+      return;
+    }
+
+    const todayStr = new Date().toLocaleDateString('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: '2-digit',
+    });
+    const newTask: Task = {
+      id: crypto.randomUUID(),
+      title,
+      category,
+      timeframe,
+      isCompleted: false,
+      dateAdded: todayStr,
+    };
+
+    setTasks(prev => {
+      const bucket = prev.filter(
+        t => t.category === category && t.timeframe === timeframe,
+      );
+      const targetTask = bucket[targetIndexInBucket];
+      if (!targetTask) return [...prev, newTask];
+      const targetGlobalIdx = prev.findIndex(t => t.id === targetTask.id);
+      return [
+        ...prev.slice(0, targetGlobalIdx),
+        newTask,
+        ...prev.slice(targetGlobalIdx),
+      ];
+    });
+
     if (payload.kind === 'inbox') {
       setInboxTasks(prev => {
         if (prev[payload.index] === payload.title) {
@@ -737,9 +835,23 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   onPayloadLeave={() => setDragOverBucket(null)}
                   onPayloadDrop={(title) => handleBucketDrop(title, cat.id, 'target')}
                 >
-                  {targets.map(task => (
-                    <div
+                  {targets.map((task, bucketIdx) => {
+                    const isRowDropTarget =
+                      dragOverRow?.category === cat.id &&
+                      dragOverRow?.timeframe === 'target' &&
+                      dragOverRow?.index === bucketIdx;
+                    return (
+                    <TouchDropZone
                       key={task.id}
+                      className={`task-row-drop-wrap ${isRowDropTarget ? 'task-row-drop-target' : ''}`}
+                      dropEffect="move"
+                      onPayloadEnter={() =>
+                        setDragOverRow({ category: cat.id, timeframe: 'target', index: bucketIdx })
+                      }
+                      onPayloadLeave={() => setDragOverRow(null)}
+                      onPayloadDrop={(raw) => handleRowDrop(raw, cat.id, 'target', bucketIdx)}
+                    >
+                    <div
                       className={`task-item task-${task.category} target-item-row`}
                       title={`Added ${task.dateAdded}`}
                       draggable={editingTaskId !== task.id}
@@ -813,7 +925,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         </div>
                       )}
                     </div>
-                  ))}
+                    </TouchDropZone>
+                    );
+                  })}
                   <div className="add-task-row">
                     <input
                       type="text"
@@ -837,9 +951,23 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   onPayloadLeave={() => setDragOverBucket(null)}
                   onPayloadDrop={(title) => handleBucketDrop(title, cat.id, 'near')}
                 >
-                  {nearTerm.map(task => (
-                    <div
+                  {nearTerm.map((task, bucketIdx) => {
+                    const isRowDropTarget =
+                      dragOverRow?.category === cat.id &&
+                      dragOverRow?.timeframe === 'near' &&
+                      dragOverRow?.index === bucketIdx;
+                    return (
+                    <TouchDropZone
                       key={task.id}
+                      className={`task-row-drop-wrap ${isRowDropTarget ? 'task-row-drop-target' : ''}`}
+                      dropEffect="move"
+                      onPayloadEnter={() =>
+                        setDragOverRow({ category: cat.id, timeframe: 'near', index: bucketIdx })
+                      }
+                      onPayloadLeave={() => setDragOverRow(null)}
+                      onPayloadDrop={(raw) => handleRowDrop(raw, cat.id, 'near', bucketIdx)}
+                    >
+                    <div
                       className={`task-item task-item-with-actions task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
                       title={`Added ${task.dateAdded}`}
                       draggable={editingTaskId !== task.id}
@@ -912,6 +1040,18 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         </div>
                       </label>
                       <button
+                        className="task-edit-btn task-row-edit-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTaskId(task.id);
+                          setEditingText(task.title);
+                        }}
+                        title="Edit task"
+                        aria-label="Edit task"
+                      >
+                        ✎
+                      </button>
+                      <button
                         className="task-delete-btn task-row-delete-btn"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -923,7 +1063,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         ✕
                       </button>
                     </div>
-                  ))}
+                    </TouchDropZone>
+                    );
+                  })}
                   <div className="add-task-row">
                     <input
                       type="text"
@@ -947,9 +1089,23 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                   onPayloadLeave={() => setDragOverBucket(null)}
                   onPayloadDrop={(title) => handleBucketDrop(title, cat.id, 'medium-long')}
                 >
-                  {mediumLong.map(task => (
-                    <div
+                  {mediumLong.map((task, bucketIdx) => {
+                    const isRowDropTarget =
+                      dragOverRow?.category === cat.id &&
+                      dragOverRow?.timeframe === 'medium-long' &&
+                      dragOverRow?.index === bucketIdx;
+                    return (
+                    <TouchDropZone
                       key={task.id}
+                      className={`task-row-drop-wrap ${isRowDropTarget ? 'task-row-drop-target' : ''}`}
+                      dropEffect="move"
+                      onPayloadEnter={() =>
+                        setDragOverRow({ category: cat.id, timeframe: 'medium-long', index: bucketIdx })
+                      }
+                      onPayloadLeave={() => setDragOverRow(null)}
+                      onPayloadDrop={(raw) => handleRowDrop(raw, cat.id, 'medium-long', bucketIdx)}
+                    >
+                    <div
                       className={`task-item task-item-with-actions task-${task.category} ${completingTaskId === task.id ? 'task-item-completing' : ''}`}
                       title={`Added ${task.dateAdded}`}
                       draggable={editingTaskId !== task.id}
@@ -1022,6 +1178,18 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         </div>
                       </label>
                       <button
+                        className="task-edit-btn task-row-edit-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingTaskId(task.id);
+                          setEditingText(task.title);
+                        }}
+                        title="Edit task"
+                        aria-label="Edit task"
+                      >
+                        ✎
+                      </button>
+                      <button
                         className="task-delete-btn task-row-delete-btn"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1033,7 +1201,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         ✕
                       </button>
                     </div>
-                  ))}
+                    </TouchDropZone>
+                    );
+                  })}
                   <div className="add-task-row">
                     <input
                       type="text"
