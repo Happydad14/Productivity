@@ -3,6 +3,7 @@ import { GlassCard } from './components/GlassCard';
 import { TabDailyDashboard, type Task } from './components/TabDailyDashboard';
 import { TabHealthScorecard, type Habit } from './components/TabHealthScorecard';
 import { TabGoalsTargets, type Goal } from './components/TabGoalsTargets';
+import { TabCodingProjects, type CodingTask } from './components/TabCodingProjects';
 import { TaskInbox } from './components/TaskInbox';
 
 // ----------------------------------------------------
@@ -125,7 +126,13 @@ const deriveAuthToken = (key: string): string => {
 };
 
 const getExpectedAuthToken = (): string => {
-  const correctKey = import.meta.env.VITE_ACCESS_KEY || 'productivity2026';
+  const correctKey = import.meta.env.VITE_ACCESS_KEY as string | undefined;
+  if (!correctKey) {
+    throw new Error(
+      'VITE_ACCESS_KEY environment variable is not set. ' +
+      'Add it to .env.local for development, or to your Vercel project settings for production.',
+    );
+  }
   return deriveAuthToken(correctKey);
 };
 
@@ -187,7 +194,10 @@ export default function App() {
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const correctKey = import.meta.env.VITE_ACCESS_KEY || 'productivity2026';
+    const correctKey = import.meta.env.VITE_ACCESS_KEY as string | undefined;
+    if (!correctKey) {
+      throw new Error('VITE_ACCESS_KEY environment variable is not set');
+    }
     if (password === correctKey) {
       try {
         localStorage.setItem(AUTH_TOKEN_KEY, deriveAuthToken(correctKey));
@@ -202,47 +212,69 @@ export default function App() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals' | 'coding'>('daily');
   const [theme, setTheme] = useState<'dark-glassmorphism' | 'light-neumorphic' | 'cyberpunk'>('dark-glassmorphism');
   const [layoutMode, setLayoutMode] = useState<'1x4' | '2x2'>(() => {
     const saved = localStorage.getItem('xp_layout_mode');
     return saved === '2x2' || saved === '1x4' ? saved : '1x4';
   });
 
-  // One-time wipe of stale template data — runs once per browser when DATA_RESET_VERSION changes
-  if (typeof window !== 'undefined' && localStorage.getItem('xp_data_reset_version') !== DATA_RESET_VERSION) {
-    localStorage.removeItem('xp_tasks');
-    localStorage.removeItem('xp_priorities_week');
-    localStorage.removeItem('xp_priorities_month');
-    localStorage.setItem('xp_data_reset_version', DATA_RESET_VERSION);
-  }
-
-  // Wipe pre-Monday habit history (must run before useState reads xp_habits)
-  wipeHabitHistoryPreCutoff();
+  // One-time startup side effects (data reset wipe + habit history wipe).
+  // Lazy useState initializer runs exactly once per mount — before all
+  // downstream useState initializers read from localStorage — and never
+  // again on re-renders (unlike bare render-body code).
+  useState<null>(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('xp_data_reset_version') !== DATA_RESET_VERSION) {
+      localStorage.removeItem('xp_tasks');
+      localStorage.removeItem('xp_priorities_week');
+      localStorage.removeItem('xp_priorities_month');
+      localStorage.setItem('xp_data_reset_version', DATA_RESET_VERSION);
+    }
+    wipeHabitHistoryPreCutoff();
+    return null;
+  });
 
   // Core app state
   const [tasks, setTasks] = useState<Task[]>(() => {
-    const saved = localStorage.getItem('xp_tasks');
-    return saved ? JSON.parse(saved) : INITIAL_TASKS();
+    try {
+      const saved = localStorage.getItem('xp_tasks');
+      return saved ? JSON.parse(saved) : INITIAL_TASKS();
+    } catch {
+      return INITIAL_TASKS();
+    }
   });
 
   const [prioritiesWeek, setPrioritiesWeek] = useState<string[]>(() => {
-    const saved = localStorage.getItem('xp_priorities_week');
-    return saved ? JSON.parse(saved) : INITIAL_PRIORITIES_WEEK;
+    try {
+      const saved = localStorage.getItem('xp_priorities_week');
+      return saved ? JSON.parse(saved) : INITIAL_PRIORITIES_WEEK;
+    } catch {
+      return INITIAL_PRIORITIES_WEEK;
+    }
   });
 
   const [prioritiesMonth, setPrioritiesMonth] = useState<string[]>(() => {
-    const saved = localStorage.getItem('xp_priorities_month');
-    return saved ? JSON.parse(saved) : INITIAL_PRIORITIES_MONTH;
+    try {
+      const saved = localStorage.getItem('xp_priorities_month');
+      return saved ? JSON.parse(saved) : INITIAL_PRIORITIES_MONTH;
+    } catch {
+      return INITIAL_PRIORITIES_MONTH;
+    }
   });
 
   const [habits, setHabits] = useState<Habit[]>(() => {
-    const saved = localStorage.getItem('xp_habits');
-    let loaded: Habit[] = saved ? JSON.parse(saved) : INITIAL_HABITS();
+    let loaded: Habit[];
+    try {
+      const saved = localStorage.getItem('xp_habits');
+      loaded = saved ? JSON.parse(saved) : INITIAL_HABITS();
+    } catch {
+      loaded = INITIAL_HABITS();
+    }
 
     // ----------------------------------------------------
     // LOCAL STORAGE HABITS MIGRATION LAYER
     // ----------------------------------------------------
+    const hadStoredData = !!localStorage.getItem('xp_habits');
     let needsUpdate = false;
     loaded = loaded.map(h => {
       if (h.name === 'No alcohol') {
@@ -263,7 +295,7 @@ export default function App() {
       });
     }
 
-    if (needsUpdate && saved) {
+    if (needsUpdate && hadStoredData) {
       localStorage.setItem('xp_habits', JSON.stringify(loaded));
     }
 
@@ -271,13 +303,49 @@ export default function App() {
   });
 
   const [goals, setGoals] = useState<Goal[]>(() => {
-    const saved = localStorage.getItem('xp_goals');
-    return saved ? JSON.parse(saved) : INITIAL_GOALS();
+    try {
+      const saved = localStorage.getItem('xp_goals');
+      return saved ? JSON.parse(saved) : INITIAL_GOALS();
+    } catch {
+      return INITIAL_GOALS();
+    }
   });
 
   const [inboxTasks, setInboxTasks] = useState<string[]>(() => {
-    const saved = localStorage.getItem('xp_inbox_tasks');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('xp_inbox_tasks');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Coding Projects state
+  const [codingTasks, setCodingTasks] = useState<CodingTask[]>(() => {
+    try {
+      const saved = localStorage.getItem('xp_coding_tasks');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [codingPrioritiesWeek, setCodingPrioritiesWeek] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('xp_coding_priorities_week');
+      return saved ? JSON.parse(saved) : ['', '', '', '', ''];
+    } catch {
+      return ['', '', '', '', ''];
+    }
+  });
+
+  const [codingPrioritiesMonth, setCodingPrioritiesMonth] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('xp_coding_priorities_month');
+      return saved ? JSON.parse(saved) : ['', '', '', '', ''];
+    } catch {
+      return ['', '', '', '', ''];
+    }
   });
 
   // Sync to LocalStorage (Acts as our permanent local database)
@@ -306,6 +374,18 @@ export default function App() {
   }, [inboxTasks]);
 
   useEffect(() => {
+    localStorage.setItem('xp_coding_tasks', JSON.stringify(codingTasks));
+  }, [codingTasks]);
+
+  useEffect(() => {
+    localStorage.setItem('xp_coding_priorities_week', JSON.stringify(codingPrioritiesWeek));
+  }, [codingPrioritiesWeek]);
+
+  useEffect(() => {
+    localStorage.setItem('xp_coding_priorities_month', JSON.stringify(codingPrioritiesMonth));
+  }, [codingPrioritiesMonth]);
+
+  useEffect(() => {
     localStorage.setItem('xp_layout_mode', layoutMode);
   }, [layoutMode]);
 
@@ -323,7 +403,7 @@ export default function App() {
     lastServerBlob: string;
     lastModified: number;
   }>({ ready: false, lastServerBlob: '', lastModified: 0 });
-  const authToken = useMemo(() => getExpectedAuthToken(), []);
+  const authToken = getExpectedAuthToken();
 
   type CloudState = {
     tasks: Task[];
@@ -332,6 +412,9 @@ export default function App() {
     habits: Habit[];
     goals: Goal[];
     inboxTasks: string[];
+    codingTasks: CodingTask[];
+    codingPrioritiesWeek: string[];
+    codingPrioritiesMonth: string[];
   };
 
   const applyRemote = (data: Partial<CloudState>) => {
@@ -344,6 +427,9 @@ export default function App() {
     if (Array.isArray(data.habits)) setHabits(filterHabitHistoryToCutoff(data.habits));
     if (Array.isArray(data.goals)) setGoals(data.goals);
     if (Array.isArray(data.inboxTasks)) setInboxTasks(data.inboxTasks);
+    if (Array.isArray(data.codingTasks)) setCodingTasks(data.codingTasks);
+    if (Array.isArray(data.codingPrioritiesWeek)) setCodingPrioritiesWeek(data.codingPrioritiesWeek);
+    if (Array.isArray(data.codingPrioritiesMonth)) setCodingPrioritiesMonth(data.codingPrioritiesMonth);
   };
 
   // Initial pull on auth
@@ -376,8 +462,8 @@ export default function App() {
   }, [isAuthenticated, authToken]);
 
   const cloudState = useMemo<CloudState>(
-    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks }),
-    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks]
+    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth }),
+    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth]
   );
 
   // Debounced push when anything changes
@@ -511,17 +597,23 @@ export default function App() {
           >
             Health Scorecard
           </button>
-          <button 
+          <button
             className={`tab-btn ${activeTab === 'goals' ? 'active' : ''}`}
             onClick={() => setActiveTab('goals')}
           >
             Goals & Targets
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'coding' ? 'active' : ''}`}
+            onClick={() => setActiveTab('coding')}
+          >
+            Coding Projects
+          </button>
         </div>
 
         {/* Theme + Layout switchers */}
         <div className="theme-selector-container">
-          {activeTab === 'daily' && (
+          {(activeTab === 'daily' || activeTab === 'coding') && (
             <button
               className="layout-toggle-btn"
               onClick={() => setLayoutMode(layoutMode === '1x4' ? '2x2' : '1x4')}
@@ -578,6 +670,19 @@ export default function App() {
           <TabGoalsTargets
             goals={goals}
             setGoals={setGoals}
+          />
+        )}
+        {activeTab === 'coding' && (
+          <TabCodingProjects
+            tasks={codingTasks}
+            setTasks={setCodingTasks}
+            prioritiesWeek={codingPrioritiesWeek}
+            setPrioritiesWeek={setCodingPrioritiesWeek}
+            prioritiesMonth={codingPrioritiesMonth}
+            setPrioritiesMonth={setCodingPrioritiesMonth}
+            inboxTasks={inboxTasks}
+            setInboxTasks={setInboxTasks}
+            layoutMode={layoutMode}
           />
         )}
       </main>

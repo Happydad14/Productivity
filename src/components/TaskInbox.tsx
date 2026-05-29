@@ -189,6 +189,11 @@ export const TaskInbox: React.FC<TaskInboxProps> = ({ items, setItems }) => {
               </div>
             </div>
           ) : (
+            // Index-based keys are intentionally safe here: inbox items are plain
+            // strings with no stable IDs. The list is short, reordering always
+            // moves adjacent elements (never appends/removes at the front), and
+            // the item text is included in the key so two identical strings at
+            // different positions still produce distinct keys.
             items.map((item, idx) => (
               <div
                 key={`${idx}-${item}`}

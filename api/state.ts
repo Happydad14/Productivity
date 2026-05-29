@@ -12,7 +12,13 @@ function deriveAuthToken(key: string): string {
 }
 
 function getExpectedToken(): string {
-  const key = process.env.ACCESS_KEY || process.env.VITE_ACCESS_KEY || 'productivity2026';
+  const key = process.env.ACCESS_KEY || process.env.VITE_ACCESS_KEY;
+  if (!key) {
+    throw new Error(
+      'ACCESS_KEY (or VITE_ACCESS_KEY) environment variable is not set. ' +
+      'Configure it in your Vercel project settings.',
+    );
+  }
   return deriveAuthToken(key);
 }
 

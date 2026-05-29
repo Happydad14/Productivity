@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Environment files — never commit secrets
+.env
+.env.production
+.env.*.local
+
+# Windows batch scripts — local tooling only
+*.bat
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { TouchDropZone } from './TouchDropZone';
 import { attachTouchDrag } from '../touchDnd';
@@ -45,6 +45,30 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   setInboxTasks,
   layoutMode,
 }) => {
+  // MM/DD/YY → timestamp. new Date("05/29/26") returns 1926, not 2026.
+  const parseTaskDate = (s: string): number => {
+    const parts = s.split('/');
+    if (parts.length === 3) {
+      const [m, d, y] = parts;
+      return new Date(2000 + parseInt(y, 10), parseInt(m, 10) - 1, parseInt(d, 10)).getTime();
+    }
+    return new Date(s).getTime() || 0;
+  };
+
+  // Stable today string for render-time comparisons (e.g. completedToday filter).
+  // Computed once per mount; event handlers that need the time-of-action date
+  // call new Date() directly so they always capture the correct moment.
+  const todayStr = useMemo(
+    () => new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }),
+    [],
+  );
+
+  // Ref for the completion animation setTimeout so it can be cleared on unmount.
+  const toggleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (toggleTimerRef.current !== null) clearTimeout(toggleTimerRef.current);
+  }, []);
+
   const [newTasks, setNewTasks] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [dragOverIndex, setDragOverIndex] = useState<{ index: number; type: 'week' | 'month' } | null>(null);
@@ -396,9 +420,12 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
       return;
     }
 
-    // Trigger float-down animation delay
+    // Trigger float-down animation delay. Store the timer so it can be cleared
+    // on unmount to avoid state updates on an unmounted component.
     setCompletingTaskId(task.id);
-    setTimeout(() => {
+    if (toggleTimerRef.current !== null) clearTimeout(toggleTimerRef.current);
+    toggleTimerRef.current = setTimeout(() => {
+      toggleTimerRef.current = null;
       toggleTask(task.id);
       setCompletingTaskId(null);
     }, 450); // Matches CSS transition duration
@@ -445,11 +472,6 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   const completedTasks = tasks.filter(t => t.isCompleted);
 
   // Group today's completions (completed on current local date)
-  const todayStr = new Date().toLocaleDateString('en-US', {
-    month: '2-digit',
-    day: '2-digit',
-    year: '2-digit',
-  });
   const completedToday = completedTasks.filter(t => t.dateCompleted === todayStr);
 
   // Search/Filter for historical completions
@@ -459,8 +481,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
     return matchesSearch && matchesCategory;
   });
 
-  // Sort historical completions
-  filteredHistory.sort((a, b) => {
+  // Sort historical completions — copy first so we never mutate the derived array.
+  // parseTaskDate fixes MM/DD/YY: new Date("05/29/26") returns year 1926, not 2026.
+  const sortedHistory = [...filteredHistory].sort((a, b) => {
     let comparison = 0;
     if (sortBy === 'title') {
       comparison = a.title.localeCompare(b.title);
@@ -470,13 +493,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
       const catB = CATEGORIES.find(c => c.id === b.category)?.label || '';
       comparison = catA.localeCompare(catB);
     } else if (sortBy === 'dateAdded') {
-      const timeA = new Date(a.dateAdded).getTime() || 0;
-      const timeB = new Date(b.dateAdded).getTime() || 0;
-      comparison = timeA - timeB;
+      comparison = parseTaskDate(a.dateAdded) - parseTaskDate(b.dateAdded);
     } else if (sortBy === 'dateCompleted') {
-      const timeA = new Date(a.dateCompleted || '').getTime() || 0;
-      const timeB = new Date(b.dateCompleted || '').getTime() || 0;
-      comparison = timeA - timeB;
+      comparison = parseTaskDate(a.dateCompleted || '') - parseTaskDate(b.dateCompleted || '');
     }
     return sortOrder === 'asc' ? comparison : -comparison;
   });
@@ -759,9 +778,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
               <div className="bulk-import-controls">
                 <div className="control-group">
                   <label>Destination Category</label>
-                  <select 
-                    value={bulkCategory} 
-                    onChange={(e) => setBulkCategory(e.target.value as any)}
+                  <select
+                    value={bulkCategory}
+                    onChange={(e) => setBulkCategory(e.target.value as 'work' | 'career' | 'family' | 'health')}
                     className="bulk-select"
                   >
                     <option value="work">Work</option>
@@ -773,9 +792,9 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
 
                 <div className="control-group">
                   <label>Timeframe Section</label>
-                  <select 
-                    value={bulkTimeframe} 
-                    onChange={(e) => setBulkTimeframe(e.target.value as any)}
+                  <select
+                    value={bulkTimeframe}
+                    onChange={(e) => setBulkTimeframe(e.target.value as 'target' | 'near' | 'medium-long')}
                     className="bulk-select"
                   >
                     <option value="target">Targets (no checkboxes)</option>
@@ -1301,16 +1320,16 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
               </tr>
             </thead>
             <tbody>
-              {filteredHistory.length === 0 ? (
+              {sortedHistory.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="empty-table-row">
-                    {completedTasks.length === 0 
-                      ? 'No history found. Complete tasks to build your log!' 
+                    {completedTasks.length === 0
+                      ? 'No history found. Complete tasks to build your log!'
                       : 'No items match your filter.'}
                   </td>
                 </tr>
               ) : (
-                filteredHistory.map(task => {
+                sortedHistory.map(task => {
                   const cat = CATEGORIES.find(c => c.id === task.category);
                   return (
                     <tr key={task.id} className="history-row">

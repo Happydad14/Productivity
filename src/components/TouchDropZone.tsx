@@ -38,7 +38,11 @@ export const TouchDropZone: React.FC<BaseProps> = ({
     e.preventDefault();
     if (dropEffect) e.dataTransfer.dropEffect = dropEffect;
   };
-  const onDragEnter = () => onPayloadEnter?.();
+  // Only fire for task/inbox/priority drags (text/plain). OS file drags carry
+  // 'Files' (and no 'text/plain') and should not trigger drop-zone highlights.
+  const onDragEnter = (e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes('text/plain')) onPayloadEnter?.();
+  };
   const onDragLeave = (e: React.DragEvent) => {
     const related = e.relatedTarget as Node | null;
     if (!e.currentTarget.contains(related)) onPayloadLeave?.();

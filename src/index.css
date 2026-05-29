@@ -36,6 +36,16 @@
   --color-health: #f97316;
   --color-health-rgb: 249, 115, 22;
 
+  /* Coding Projects Color Accents */
+  --color-pe-app: #38bdf8;
+  --color-pe-app-rgb: 56, 189, 248;
+  --color-project27: #fb923c;
+  --color-project27-rgb: 251, 146, 60;
+  --color-coding-prod: #4ade80;
+  --color-coding-prod-rgb: 74, 222, 128;
+  --color-new-projects: #c084fc;
+  --color-new-projects-rgb: 192, 132, 252;
+
   --text-muted: #94a3b8;
   --text-dim: #64748b;
   --success: #10b981;
@@ -73,6 +83,16 @@
   --color-health: #ea580c;
   --color-health-rgb: 234, 88, 12;
   --success: #059669;
+
+  /* Coding Projects (light neumorphic) */
+  --color-pe-app: #0284c7;
+  --color-pe-app-rgb: 2, 132, 199;
+  --color-project27: #ea580c;
+  --color-project27-rgb: 234, 88, 12;
+  --color-coding-prod: #16a34a;
+  --color-coding-prod-rgb: 22, 163, 74;
+  --color-new-projects: #9333ea;
+  --color-new-projects-rgb: 147, 51, 234;
 }
 
 /* Dim the dark-mode glow circles for cream background */
@@ -3465,4 +3485,120 @@ body {
   cursor: grabbing;
   -webkit-user-select: none;
   user-select: none;
+}
+
+/* ==========================================================================
+   CODING PROJECTS — task item accent styles (dark glassmorphism)
+   ========================================================================== */
+
+/* PE App — sky blue */
+.task-item.task-pe-app::before {
+  background: radial-gradient(ellipse at center, rgba(56, 189, 248, 0.22) 0%, rgba(56, 189, 248, 0.10) 40%, transparent 70%);
+}
+.task-item.task-pe-app {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(56, 189, 248, 0.18) 0%, rgba(56, 189, 248, 0.08) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(18, 36, 52, 0.62), rgba(8, 16, 28, 0.78));
+  border-color: rgba(56, 189, 248, 0.20);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -10px 20px -8px rgba(56, 189, 248, 0.22),
+    0 6px 18px -6px rgba(56, 189, 248, 0.22);
+}
+.task-item.task-pe-app:hover {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(56, 189, 248, 0.30) 0%, rgba(56, 189, 248, 0.14) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(24, 48, 70, 0.72), rgba(12, 24, 42, 0.82));
+  border-color: rgba(56, 189, 248, 0.32);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -12px 24px -8px rgba(56, 189, 248, 0.36),
+    0 10px 28px -6px rgba(56, 189, 248, 0.36);
+  transform: translateY(-1px);
+}
+
+/* Project 27 — amber/orange */
+.task-item.task-project-27::before {
+  background: radial-gradient(ellipse at center, rgba(251, 146, 60, 0.22) 0%, rgba(251, 146, 60, 0.10) 40%, transparent 70%);
+}
+.task-item.task-project-27 {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(251, 146, 60, 0.18) 0%, rgba(251, 146, 60, 0.08) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(40, 26, 14, 0.62), rgba(22, 14, 8, 0.78));
+  border-color: rgba(251, 146, 60, 0.20);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -10px 20px -8px rgba(251, 146, 60, 0.22),
+    0 6px 18px -6px rgba(251, 146, 60, 0.22);
+}
+.task-item.task-project-27:hover {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(251, 146, 60, 0.30) 0%, rgba(251, 146, 60, 0.14) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(52, 34, 18, 0.72), rgba(28, 18, 10, 0.82));
+  border-color: rgba(251, 146, 60, 0.32);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -12px 24px -8px rgba(251, 146, 60, 0.36),
+    0 10px 28px -6px rgba(251, 146, 60, 0.36);
+  transform: translateY(-1px);
+}
+
+/* Productivity — green */
+.task-item.task-productivity::before {
+  background: radial-gradient(ellipse at center, rgba(74, 222, 128, 0.22) 0%, rgba(74, 222, 128, 0.10) 40%, transparent 70%);
+}
+.task-item.task-productivity {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(74, 222, 128, 0.18) 0%, rgba(74, 222, 128, 0.08) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(16, 36, 22, 0.62), rgba(8, 18, 12, 0.78));
+  border-color: rgba(74, 222, 128, 0.20);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -10px 20px -8px rgba(74, 222, 128, 0.22),
+    0 6px 18px -6px rgba(74, 222, 128, 0.22);
+}
+.task-item.task-productivity:hover {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(74, 222, 128, 0.30) 0%, rgba(74, 222, 128, 0.14) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(22, 48, 30, 0.72), rgba(12, 26, 16, 0.82));
+  border-color: rgba(74, 222, 128, 0.32);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -12px 24px -8px rgba(74, 222, 128, 0.36),
+    0 10px 28px -6px rgba(74, 222, 128, 0.36);
+  transform: translateY(-1px);
+}
+
+/* New Projects — purple */
+.task-item.task-new-projects::before {
+  background: radial-gradient(ellipse at center, rgba(192, 132, 252, 0.22) 0%, rgba(192, 132, 252, 0.10) 40%, transparent 70%);
+}
+.task-item.task-new-projects {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(192, 132, 252, 0.18) 0%, rgba(192, 132, 252, 0.08) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(30, 22, 42, 0.62), rgba(16, 12, 24, 0.78));
+  border-color: rgba(192, 132, 252, 0.20);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 -10px 20px -8px rgba(192, 132, 252, 0.22),
+    0 6px 18px -6px rgba(192, 132, 252, 0.22);
+}
+.task-item.task-new-projects:hover {
+  background:
+    radial-gradient(ellipse 90% 70% at 50% 115%, rgba(192, 132, 252, 0.30) 0%, rgba(192, 132, 252, 0.14) 35%, transparent 65%),
+    linear-gradient(180deg, rgba(42, 28, 60, 0.72), rgba(22, 16, 34, 0.82));
+  border-color: rgba(192, 132, 252, 0.32);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -12px 24px -8px rgba(192, 132, 252, 0.36),
+    0 10px 28px -6px rgba(192, 132, 252, 0.36);
+  transform: translateY(-1px);
 }
