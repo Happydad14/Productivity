@@ -111,33 +111,74 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
 
   // ----------------------------------------------------
   // Monthly Progress Calculations (Rolling 4-week grid)
-  // Let's create a rolling 28-day history based on the reference week
-  // going backward 4 weeks.
+  // The window always begins on the most recent Sunday (start of the current
+  // ISO week) and runs forward 28 days. Anything before last Sunday is
+  // excluded from both the dot grid and the percentage. Days after today are
+  // rendered as empty "upcoming" dots and do not count toward the percentage.
   // ----------------------------------------------------
-  const getMonthlyDots = (habit: Habit): { dateKey: string; isCompleted: boolean }[] => {
-    const dots: { dateKey: string; isCompleted: boolean }[] = [];
-    // Start 27 days before the Saturday of the current week
-    const lastDayOfWeek = new Date(weekEnd);
-    const startDate = new Date(lastDayOfWeek);
-    startDate.setDate(lastDayOfWeek.getDate() - 27); // 4 weeks of dots
 
+  // The most recent Sunday relative to today (today itself if today is Sunday).
+  const getLastSunday = (): Date => {
+    const today = new Date();
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const lastSunday = new Date(today);
+    lastSunday.setDate(today.getDate() - dayOfWeek); // go back to Sunday
+    lastSunday.setHours(0, 0, 0, 0);
+    return lastSunday;
+  };
+
+  // Midnight today, for comparing whether a dot is in the past, present, or future.
+  const getTodayMidnight = (): Date => {
+    const t = new Date();
+    t.setHours(0, 0, 0, 0);
+    return t;
+  };
+
+  const getMonthlyDots = (
+    habit: Habit
+  ): { dateKey: string; isCompleted: boolean; isFuture: boolean }[] => {
+    const dots: { dateKey: string; isCompleted: boolean; isFuture: boolean }[] = [];
+    const lastSunday = getLastSunday();
+    const todayMidnight = getTodayMidnight().getTime();
+
+    // 4 weeks (28 days) of dots starting from last Sunday, going forward.
     for (let i = 0; i < 28; i++) {
-      const d = new Date(startDate);
-      d.setDate(startDate.getDate() + i);
+      const d = new Date(lastSunday);
+      d.setDate(lastSunday.getDate() + i);
+      d.setHours(0, 0, 0, 0);
       const key = getLogKey(d);
       dots.push({
         dateKey: key,
         isCompleted: !!habit.history[key],
+        isFuture: d.getTime() > todayMidnight,
       });
     }
     return dots;
   };
 
+  // Rolling percentage: completions since last Sunday / days elapsed since last
+  // Sunday (inclusive of today). Missed days drag it down; future days are
+  // ignored. On Sunday this is x/1, Monday x/2, etc.
   const getMonthlyCompliance = (habit: Habit): number => {
-    const dots = getMonthlyDots(habit);
-    const completed = dots.filter(d => d.isCompleted).length;
-    return Math.round((completed / 28) * 100);
+    const lastSunday = getLastSunday();
+    const todayMidnight = getTodayMidnight();
+    const daysElapsed =
+      Math.floor((todayMidnight.getTime() - lastSunday.getTime()) / 86400000) + 1;
+
+    if (daysElapsed <= 0) return 0;
+
+    let completed = 0;
+    for (let i = 0; i < daysElapsed; i++) {
+      const d = new Date(lastSunday);
+      d.setDate(lastSunday.getDate() + i);
+      if (habit.history[getLogKey(d)]) {
+        completed++;
+      }
+    }
+    return Math.round((completed / daysElapsed) * 100);
   };
+
+  const lastSunday = getLastSunday();
 
   return (
     <div className="health-scorecard-tab">
@@ -245,7 +286,7 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
         <div className="monthly-progress-header">
           <div>
             <div className="title">Monthly Rolling Progress</div>
-            <div className="subtitle">Visualizing the last 4 consecutive weeks ending {formatDateLabel(weekEnd)}</div>
+            <div className="subtitle">4-week window starting {formatDateLabel(lastSunday)} (last Sunday) · % is rolling, this week onward</div>
           </div>
         </div>
 
@@ -273,12 +314,23 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
                     // Divide into 4 colored week segments of 7 dots each
                     const weekIdx = Math.floor(idx / 7) + 1;
                     const colorClass = `week-color-${weekIdx}`;
-                    
+
+                    const statusClass = dot.isFuture
+                      ? 'upcoming'
+                      : dot.isCompleted
+                        ? 'active'
+                        : 'inactive';
+                    const statusLabel = dot.isFuture
+                      ? 'Upcoming'
+                      : dot.isCompleted
+                        ? 'Completed'
+                        : 'Missed';
+
                     return (
                       <span
                         key={dot.dateKey + '-' + idx}
-                        className={`progress-dot ${colorClass} ${dot.isCompleted ? 'active' : 'inactive'}`}
-                        title={`${dot.dateKey}: ${dot.isCompleted ? 'Completed' : 'Missed'}`}
+                        className={`progress-dot ${colorClass} ${statusClass}`}
+                        title={`${dot.dateKey}: ${statusLabel}`}
                       />
                     );
                   })}

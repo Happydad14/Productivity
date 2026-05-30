@@ -455,6 +455,12 @@
   border: none;
   box-shadow: inset 1px 1px 2px rgba(168, 145, 100, 0.30), inset -1px -1px 2px rgba(255, 252, 245, 0.6);
 }
+[data-theme='light-neumorphic'] .progress-dot.upcoming {
+  background-color: transparent;
+  border: 1px dashed rgba(168, 145, 100, 0.45);
+  box-shadow: none;
+  opacity: 0.7;
+}
 [data-theme='light-neumorphic'] .legend-title { color: #8a7959; }
 [data-theme='light-neumorphic'] .legend-item { color: #5a4a32; }
 [data-theme='light-neumorphic'] .compliance-bar-outer {
@@ -2133,6 +2139,14 @@ body {
 .progress-dot.inactive {
   background-color: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Future days within the 4-week window — not yet earned */
+.progress-dot.upcoming {
+  background-color: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  box-shadow: none;
+  opacity: 0.6;
 }
 
 .monthly-rate-cell {
