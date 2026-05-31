@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GlassCard } from './GlassCard';
+import type { Task } from './TabDailyDashboard';
 
 export interface Habit {
   id: string;
@@ -13,11 +14,13 @@ export interface Habit {
 interface TabHealthScorecardProps {
   habits: Habit[];
   setHabits: React.Dispatch<React.SetStateAction<Habit[]>>;
+  tasks?: Task[];
 }
 
 export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
   habits,
   setHabits,
+  tasks = [],
 }) => {
   // Reference date for the active week view. Defaults to today.
   const [referenceDate, setReferenceDate] = useState(() => new Date());
@@ -67,6 +70,61 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
     const dd = String(date.getDate()).padStart(2, '0');
     return `${yyyy}-${mm}-${dd}`;
   };
+
+  // The Sunday that starts the week containing the given date.
+  const getSundayOf = (d: Date): Date => {
+    const s = new Date(d);
+    s.setDate(d.getDate() - d.getDay());
+    s.setHours(0, 0, 0, 0);
+    return s;
+  };
+
+  // Are we viewing the week that contains today?
+  const isCurrentWeek = getLogKey(weekStart) === getLogKey(getSundayOf(new Date()));
+
+  // Convert a task's "MM/DD/YY" dateCompleted into a "YYYY-MM-DD" log key.
+  const completedToLogKey = (mmddyy: string): string | null => {
+    const parts = mmddyy.split('/');
+    if (parts.length !== 3) return null;
+    const [mm, dd, yy] = parts;
+    const yyyy = yy.length === 2 ? `20${yy}` : yy;
+    return `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+  };
+
+  // Set of the 7 log keys covered by the active week, for fast membership tests.
+  const weekKeySet = new Set(weekDates.map(getLogKey));
+
+  // Tasks whose completion date falls inside the active week.
+  const weekCompletedTasks = tasks.filter(
+    t =>
+      t.isCompleted &&
+      t.dateCompleted &&
+      weekKeySet.has(completedToLogKey(t.dateCompleted) ?? '')
+  );
+
+  // Earliest date that has any recorded data (habit check or task completion).
+  // Used to disable ◀ once there is no history left to scroll back into.
+  const earliestDataKey = (): string | null => {
+    let earliest: string | null = null;
+    const consider = (key: string | null) => {
+      if (key && (earliest === null || key < earliest)) earliest = key;
+    };
+    habits.forEach(h => Object.keys(h.history).forEach(consider));
+    tasks.forEach(t => {
+      if (t.isCompleted && t.dateCompleted) consider(completedToLogKey(t.dateCompleted));
+    });
+    return earliest;
+  };
+
+  // Can we step back a week? Only if some data exists in or before the
+  // previous week (i.e. the active week's Sunday is after the earliest week's).
+  const canGoBack = (() => {
+    const earliest = earliestDataKey();
+    if (!earliest) return false;
+    const [y, m, d] = earliest.split('-').map(Number);
+    const earliestSunday = getSundayOf(new Date(y, m - 1, d));
+    return getLogKey(weekStart) > getLogKey(earliestSunday);
+  })();
 
   const toggleHabitDate = (habitId: string, dateKey: string) => {
     setHabits(prevHabits =>
@@ -189,15 +247,27 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
             <div>
               <div className="title">Health & Fitness Weekly Scorecard</div>
               <div className="date-range">
-                Week of {formatDateLabel(weekStart)} – {formatDateLabel(weekEnd)}, {weekStart.getFullYear()}
+                {isCurrentWeek
+                  ? `Current Week · ${formatDateLabel(weekStart)} – ${formatDateLabel(weekEnd)}, ${weekStart.getFullYear()}`
+                  : `Week of ${formatDateLabel(weekStart)} – ${formatDateLabel(weekEnd)}, ${weekStart.getFullYear()}`}
               </div>
             </div>
           </div>
-          
+
           <div className="controls-nav-group">
-            <button className="nav-btn" onClick={() => shiftWeek('prev')} title="Previous Week">◀</button>
+            <button
+              className="nav-btn"
+              onClick={() => shiftWeek('prev')}
+              disabled={!canGoBack}
+              title={canGoBack ? 'Previous Week' : 'No earlier history'}
+            >◀</button>
             <button className="today-nav-btn" onClick={setTodayWeek}>This Week</button>
-            <button className="nav-btn" onClick={() => shiftWeek('next')} title="Next Week">▶</button>
+            <button
+              className="nav-btn"
+              onClick={() => shiftWeek('next')}
+              disabled={isCurrentWeek}
+              title={isCurrentWeek ? "Can't view future weeks" : 'Next Week'}
+            >▶</button>
           </div>
         </div>
       </GlassCard>
@@ -221,7 +291,7 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
                     </th>
                   );
                 })}
-                <th className="stats-header-cell">Current (WTD)</th>
+                <th className="stats-header-cell">{isCurrentWeek ? 'Current (WTD)' : 'Week Total'}</th>
                 <th className="stats-header-cell">Target</th>
               </tr>
             </thead>
@@ -260,7 +330,8 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
                     })}
 
                     <td className={`wtd-cell ${isGoalMet ? 'goal-achieved' : 'goal-pending'}`}>
-                      {wtd}
+                      <div className="wtd-count">{wtd}</div>
+                      <div className="wtd-pct">{Math.round((wtd / 7) * 100)}%</div>
                     </td>
 
                     <td className="target-cell">
@@ -279,6 +350,33 @@ export const TabHealthScorecard: React.FC<TabHealthScorecardProps> = ({
             </tbody>
           </table>
         </div>
+      </GlassCard>
+
+      {/* Tasks completed during the active week */}
+      <GlassCard className="week-tasks-card">
+        <div className="monthly-progress-header">
+          <div>
+            <div className="title">Tasks Completed This Week</div>
+            <div className="subtitle">
+              {isCurrentWeek ? 'Current week' : `Week of ${formatDateLabel(weekStart)}`} ·{' '}
+              {weekCompletedTasks.length} task{weekCompletedTasks.length === 1 ? '' : 's'}
+            </div>
+          </div>
+        </div>
+
+        {weekCompletedTasks.length === 0 ? (
+          <div className="week-tasks-empty">No tasks completed this week.</div>
+        ) : (
+          <ul className="week-tasks-list">
+            {weekCompletedTasks.map(task => (
+              <li key={task.id} className="week-task-item">
+                <span className={`week-task-cat cat-${task.category}`}>{task.category}</span>
+                <span className="week-task-title">{task.title}</span>
+                <span className="week-task-date">{task.dateCompleted}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </GlassCard>
 
       {/* Monthly Progress Matrix Grid */}

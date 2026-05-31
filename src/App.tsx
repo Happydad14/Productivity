@@ -664,6 +664,7 @@ export default function App() {
           <TabHealthScorecard
             habits={habits}
             setHabits={setHabits}
+            tasks={tasks}
           />
         )}
         {activeTab === 'goals' && (
