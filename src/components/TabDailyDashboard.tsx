@@ -923,19 +923,31 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                             <span className="task-date">{task.dateAdded}</span>
                           </div>
                           <div className="target-actions">
-                            <button 
-                              className="task-edit-btn" 
-                              onClick={() => {
+                            <button
+                              type="button"
+                              className="task-edit-btn"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 setEditingTaskId(task.id);
                                 setEditingText(task.title);
-                              }} 
+                              }}
                               title="Edit Target"
                             >
                               ✎
                             </button>
-                            <button 
-                              className="task-delete-btn" 
-                              onClick={() => deleteTask(task.id)} 
+                            <button
+                              type="button"
+                              className="task-delete-btn"
+                              onMouseDown={(e) => e.stopPropagation()}
+                              onTouchStart={(e) => e.stopPropagation()}
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteTask(task.id);
+                              }}
                               title="Delete Target"
                             >
                               ✕
@@ -1059,8 +1071,15 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         </div>
                       </label>
                       <button
+                        type="button"
                         className="task-edit-btn task-row-edit-btn"
+                        // Stop touchstart/mousedown from reaching the row's drag
+                        // handler — otherwise a held tap arms a drag and the
+                        // click that opens edit is swallowed.
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           setEditingTaskId(task.id);
                           setEditingText(task.title);
@@ -1071,8 +1090,12 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         ✎
                       </button>
                       <button
+                        type="button"
                         className="task-delete-btn task-row-delete-btn"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           deleteTask(task.id);
                         }}
@@ -1197,8 +1220,15 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         </div>
                       </label>
                       <button
+                        type="button"
                         className="task-edit-btn task-row-edit-btn"
+                        // Stop touchstart/mousedown from reaching the row's drag
+                        // handler — otherwise a held tap arms a drag and the
+                        // click that opens edit is swallowed.
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           setEditingTaskId(task.id);
                           setEditingText(task.title);
@@ -1209,8 +1239,12 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
                         ✎
                       </button>
                       <button
+                        type="button"
                         className="task-delete-btn task-row-delete-btn"
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           deleteTask(task.id);
                         }}

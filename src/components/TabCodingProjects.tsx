@@ -846,8 +846,13 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                               </div>
                               <div className="target-actions">
                                 <button
+                                  type="button"
                                   className="task-edit-btn"
-                                  onClick={() => {
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onTouchStart={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
                                     setEditingTaskId(task.id);
                                     setEditingText(task.title);
                                   }}
@@ -856,8 +861,15 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                                   ✎
                                 </button>
                                 <button
+                                  type="button"
                                   className="task-delete-btn"
-                                  onClick={() => deleteTask(task.id)}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onTouchStart={(e) => e.stopPropagation()}
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    deleteTask(task.id);
+                                  }}
                                   title="Delete Target"
                                 >
                                   ✕
@@ -975,8 +987,15 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                             </div>
                           </label>
                           <button
+                            type="button"
                             className="task-edit-btn task-row-edit-btn"
+                            // Stop touchstart/mousedown from reaching the row's
+                            // drag handler — otherwise a held tap arms a drag and
+                            // the click that opens edit is swallowed.
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               setEditingTaskId(task.id);
                               setEditingText(task.title);
@@ -987,8 +1006,12 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                             ✎
                           </button>
                           <button
+                            type="button"
                             className="task-delete-btn task-row-delete-btn"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               deleteTask(task.id);
                             }}
@@ -1107,8 +1130,15 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                             </div>
                           </label>
                           <button
+                            type="button"
                             className="task-edit-btn task-row-edit-btn"
+                            // Stop touchstart/mousedown from reaching the row's
+                            // drag handler — otherwise a held tap arms a drag and
+                            // the click that opens edit is swallowed.
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               setEditingTaskId(task.id);
                               setEditingText(task.title);
@@ -1119,8 +1149,12 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                             ✎
                           </button>
                           <button
+                            type="button"
                             className="task-delete-btn task-row-delete-btn"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onTouchStart={(e) => e.stopPropagation()}
                             onClick={(e) => {
+                              e.preventDefault();
                               e.stopPropagation();
                               deleteTask(task.id);
                             }}
