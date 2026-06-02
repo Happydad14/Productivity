@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { TouchDropZone } from './TouchDropZone';
+import { GoalsInbox } from './GoalsInbox';
 
 export interface Goal {
   id: string;
@@ -14,6 +15,8 @@ export interface Goal {
 interface TabGoalsTargetsProps {
   goals: Goal[];
   setGoals: React.Dispatch<React.SetStateAction<Goal[]>>;
+  goalsInbox: string[];
+  setGoalsInbox: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const CATEGORIES = [
@@ -26,6 +29,8 @@ const CATEGORIES = [
 export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
   goals,
   setGoals,
+  goalsInbox,
+  setGoalsInbox,
 }) => {
   const [newGoalTexts, setNewGoalTexts] = useState<Record<string, string>>({});
   const [dragOverBucket, setDragOverBucket] = useState<string | null>(null);
@@ -105,6 +110,15 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
             <div className="subtitle">Laying out long-term visions and medium-term milestones across categories</div>
           </div>
         </div>
+      </GlassCard>
+
+      {/* Goals Inbox — freeform capture, then send into a bucket */}
+      <GlassCard className="goals-inbox-card">
+        <GoalsInbox
+          items={goalsInbox}
+          setItems={setGoalsInbox}
+          onMove={(title, category, term) => handleGoalDrop(title, category, term)}
+        />
       </GlassCard>
 
       {/* Grid of Categories */}

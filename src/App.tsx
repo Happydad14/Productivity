@@ -4,6 +4,7 @@ import { TabDailyDashboard, type Task } from './components/TabDailyDashboard';
 import { TabHealthScorecard, type Habit } from './components/TabHealthScorecard';
 import { TabGoalsTargets, type Goal } from './components/TabGoalsTargets';
 import { TabCodingProjects, type CodingTask } from './components/TabCodingProjects';
+import { TabFreeform } from './components/TabFreeform';
 import { TaskInbox } from './components/TaskInbox';
 
 // ----------------------------------------------------
@@ -212,7 +213,7 @@ export default function App() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals' | 'coding'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals' | 'coding' | 'freeform'>('daily');
   const [theme, setTheme] = useState<'dark-glassmorphism' | 'light-neumorphic' | 'cyberpunk'>('dark-glassmorphism');
   const [layoutMode, setLayoutMode] = useState<'1x4' | '2x2'>(() => {
     const saved = localStorage.getItem('xp_layout_mode');
@@ -320,6 +321,23 @@ export default function App() {
     }
   });
 
+  const [goalsInbox, setGoalsInbox] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('xp_goals_inbox');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [freeformContent, setFreeformContent] = useState<string>(() => {
+    try {
+      return localStorage.getItem('xp_freeform_content') ?? '';
+    } catch {
+      return '';
+    }
+  });
+
   // Coding Projects state
   const [codingTasks, setCodingTasks] = useState<CodingTask[]>(() => {
     try {
@@ -374,6 +392,14 @@ export default function App() {
   }, [inboxTasks]);
 
   useEffect(() => {
+    localStorage.setItem('xp_goals_inbox', JSON.stringify(goalsInbox));
+  }, [goalsInbox]);
+
+  useEffect(() => {
+    localStorage.setItem('xp_freeform_content', freeformContent);
+  }, [freeformContent]);
+
+  useEffect(() => {
     localStorage.setItem('xp_coding_tasks', JSON.stringify(codingTasks));
   }, [codingTasks]);
 
@@ -412,6 +438,8 @@ export default function App() {
     habits: Habit[];
     goals: Goal[];
     inboxTasks: string[];
+    goalsInbox: string[];
+    freeformContent: string;
     codingTasks: CodingTask[];
     codingPrioritiesWeek: string[];
     codingPrioritiesMonth: string[];
@@ -427,6 +455,8 @@ export default function App() {
     if (Array.isArray(data.habits)) setHabits(filterHabitHistoryToCutoff(data.habits));
     if (Array.isArray(data.goals)) setGoals(data.goals);
     if (Array.isArray(data.inboxTasks)) setInboxTasks(data.inboxTasks);
+    if (Array.isArray(data.goalsInbox)) setGoalsInbox(data.goalsInbox);
+    if (typeof data.freeformContent === 'string') setFreeformContent(data.freeformContent);
     if (Array.isArray(data.codingTasks)) setCodingTasks(data.codingTasks);
     if (Array.isArray(data.codingPrioritiesWeek)) setCodingPrioritiesWeek(data.codingPrioritiesWeek);
     if (Array.isArray(data.codingPrioritiesMonth)) setCodingPrioritiesMonth(data.codingPrioritiesMonth);
@@ -462,8 +492,8 @@ export default function App() {
   }, [isAuthenticated, authToken]);
 
   const cloudState = useMemo<CloudState>(
-    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth }),
-    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth]
+    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth }),
+    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth]
   );
 
   // Debounced push when anything changes
@@ -609,6 +639,12 @@ export default function App() {
           >
             Coding Projects
           </button>
+          <button
+            className={`tab-btn ${activeTab === 'freeform' ? 'active' : ''}`}
+            onClick={() => setActiveTab('freeform')}
+          >
+            Freeform
+          </button>
         </div>
 
         {/* Theme + Layout switchers */}
@@ -671,6 +707,8 @@ export default function App() {
           <TabGoalsTargets
             goals={goals}
             setGoals={setGoals}
+            goalsInbox={goalsInbox}
+            setGoalsInbox={setGoalsInbox}
           />
         )}
         {activeTab === 'coding' && (
@@ -684,6 +722,14 @@ export default function App() {
             inboxTasks={inboxTasks}
             setInboxTasks={setInboxTasks}
             layoutMode={layoutMode}
+          />
+        )}
+        {activeTab === 'freeform' && (
+          <TabFreeform
+            content={freeformContent}
+            setContent={setFreeformContent}
+            onSendToTaskInbox={(lines) => setInboxTasks(prev => [...prev, ...lines])}
+            onSendToGoalsInbox={(lines) => setGoalsInbox(prev => [...prev, ...lines])}
           />
         )}
       </main>
