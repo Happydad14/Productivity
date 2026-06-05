@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GlassCard } from './GlassCard';
 import { TouchDropZone } from './TouchDropZone';
 import { attachTouchDrag } from '../touchDnd';
@@ -57,11 +57,10 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
     return new Date(s).getTime() || 0;
   };
 
-  // Stable today string for render-time comparisons (e.g. completedToday filter).
-  const todayStr = useMemo(
-    () => new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' }),
-    [],
-  );
+  // Today string for render-time comparisons (e.g. completedToday filter).
+  // Recomputed each render (cheap) so a session left open across midnight rolls
+  // over correctly instead of pinning to the mount day.
+  const todayStr = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: '2-digit' });
 
   // Ref for the completion animation setTimeout so it can be cleared on unmount.
   const toggleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -328,9 +327,29 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
     }
   };
 
+  // Set true by an Escape press so the input's trailing onBlur (which fires when
+  // the field unmounts) discards the edit instead of committing it.
+  const cancelEditRef = useRef(false);
+
+  const cancelTaskEdit = () => {
+    cancelEditRef.current = true;
+    setEditingTaskId(null);
+  };
+
   const saveTaskEdit = (id: string, newTitle: string) => {
-    if (!newTitle.trim()) return;
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, title: newTitle.trim() } : t));
+    // Honor a pending Escape-cancel and bail without writing.
+    if (cancelEditRef.current) {
+      cancelEditRef.current = false;
+      setEditingTaskId(null);
+      return;
+    }
+    const trimmed = newTitle.trim();
+    // Empty title: leave the task untouched but exit edit mode (don't trap the row).
+    if (!trimmed) {
+      setEditingTaskId(null);
+      return;
+    }
+    setTasks(prev => prev.map(t => t.id === id ? { ...t, title: trimmed } : t));
     setEditingTaskId(null);
   };
 
@@ -820,7 +839,7 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                               onChange={(e) => setEditingText(e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter') saveTaskEdit(task.id, editingText);
-                                if (e.key === 'Escape') setEditingTaskId(null);
+                                if (e.key === 'Escape') cancelTaskEdit();
                               }}
                               onBlur={() => saveTaskEdit(task.id, editingText)}
                               className="edit-task-inline-input"
@@ -971,7 +990,7 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                                   onChange={(e) => setEditingText(e.target.value)}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') saveTaskEdit(task.id, editingText);
-                                    if (e.key === 'Escape') setEditingTaskId(null);
+                                    if (e.key === 'Escape') cancelTaskEdit();
                                   }}
                                   onBlur={() => saveTaskEdit(task.id, editingText)}
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
@@ -1114,7 +1133,7 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                                   onChange={(e) => setEditingText(e.target.value)}
                                   onKeyDown={(e) => {
                                     if (e.key === 'Enter') saveTaskEdit(task.id, editingText);
-                                    if (e.key === 'Escape') setEditingTaskId(null);
+                                    if (e.key === 'Escape') cancelTaskEdit();
                                   }}
                                   onBlur={() => saveTaskEdit(task.id, editingText)}
                                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}

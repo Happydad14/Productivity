@@ -613,6 +613,17 @@ body {
   padding: 15px 30px;
 }
 
+/* At intermediate widths the brand + tabs + theme controls no longer fit on a
+   single row and would otherwise push a horizontal scrollbar onto the whole
+   page (~770–1180px). Let the header wrap there. Above this width everything
+   fits on one row; the 768px block below handles true mobile. */
+@media (max-width: 1180px) {
+  .app-header {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+}
+
 .brand-section {
   display: flex;
   align-items: center;
@@ -2208,6 +2219,7 @@ body {
 
 .monthly-dots-grid {
   display: flex;
+  flex-wrap: wrap; /* 28 dots reflow when the row is too narrow instead of overflowing the page */
   gap: 5px;
   justify-content: flex-start;
 }
@@ -3996,6 +4008,7 @@ body {
   padding: 0;
   overflow: hidden;
   display: flex;
+  min-width: 0; /* let the 1fr grid column shrink below the textarea's intrinsic width */
 }
 .freeform-editor {
   width: 100%;
@@ -4019,6 +4032,7 @@ body {
   flex-direction: column;
   gap: 12px;
   max-height: 70vh;
+  min-width: 0; /* let the 1fr grid column shrink so long lines ellipsis instead of overflowing */
 }
 .freeform-lines-header {
   display: flex;
@@ -4066,6 +4080,7 @@ body {
 }
 .freeform-line-text {
   flex: 1;
+  min-width: 0; /* allow the row to shrink so the ellipsis engages instead of forcing width */
   font-size: 0.82rem;
   color: var(--text-muted);
   overflow: hidden;
