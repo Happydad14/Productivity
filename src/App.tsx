@@ -3,7 +3,7 @@ import { GlassCard } from './components/GlassCard';
 import { TabDailyDashboard, type Task } from './components/TabDailyDashboard';
 import { TabHealthScorecard, type Habit } from './components/TabHealthScorecard';
 import { TabGoalsTargets, type Goal } from './components/TabGoalsTargets';
-import { TabCodingProjects, type CodingTask } from './components/TabCodingProjects';
+import { TabCodingProjects, type CodingTask, type CodingNote } from './components/TabCodingProjects';
 import { TabFreeform } from './components/TabFreeform';
 import { TaskInbox } from './components/TaskInbox';
 
@@ -366,6 +366,15 @@ export default function App() {
     }
   });
 
+  const [codingNotes, setCodingNotes] = useState<CodingNote[]>(() => {
+    try {
+      const saved = localStorage.getItem('xp_coding_notes');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
   // Sync to LocalStorage (Acts as our permanent local database)
   useEffect(() => {
     localStorage.setItem('xp_tasks', JSON.stringify(tasks));
@@ -412,6 +421,10 @@ export default function App() {
   }, [codingPrioritiesMonth]);
 
   useEffect(() => {
+    localStorage.setItem('xp_coding_notes', JSON.stringify(codingNotes));
+  }, [codingNotes]);
+
+  useEffect(() => {
     localStorage.setItem('xp_layout_mode', layoutMode);
   }, [layoutMode]);
 
@@ -443,6 +456,7 @@ export default function App() {
     codingTasks: CodingTask[];
     codingPrioritiesWeek: string[];
     codingPrioritiesMonth: string[];
+    codingNotes: CodingNote[];
   };
 
   const applyRemote = (data: Partial<CloudState>) => {
@@ -460,6 +474,7 @@ export default function App() {
     if (Array.isArray(data.codingTasks)) setCodingTasks(data.codingTasks);
     if (Array.isArray(data.codingPrioritiesWeek)) setCodingPrioritiesWeek(data.codingPrioritiesWeek);
     if (Array.isArray(data.codingPrioritiesMonth)) setCodingPrioritiesMonth(data.codingPrioritiesMonth);
+    if (Array.isArray(data.codingNotes)) setCodingNotes(data.codingNotes);
   };
 
   // Initial pull on auth
@@ -492,8 +507,8 @@ export default function App() {
   }, [isAuthenticated, authToken]);
 
   const cloudState = useMemo<CloudState>(
-    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth }),
-    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth]
+    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes }),
+    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes]
   );
 
   // Debounced push when anything changes
@@ -722,6 +737,8 @@ export default function App() {
             inboxTasks={inboxTasks}
             setInboxTasks={setInboxTasks}
             layoutMode={layoutMode}
+            notes={codingNotes}
+            setNotes={setCodingNotes}
           />
         )}
         {activeTab === 'freeform' && (

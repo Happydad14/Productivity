@@ -17,6 +17,15 @@ export interface CodingTask {
 type CodingCategory = CodingTask['category'];
 type Timeframe = CodingTask['timeframe'];
 
+export interface CodingNote {
+  id: string;
+  title: string;
+  body: string;
+  project: CodingCategory;
+  createdAt: string; // ISO timestamp
+  updatedAt: string; // ISO timestamp
+}
+
 interface TabCodingProjectsProps {
   tasks: CodingTask[];
   setTasks: React.Dispatch<React.SetStateAction<CodingTask[]>>;
@@ -27,6 +36,8 @@ interface TabCodingProjectsProps {
   inboxTasks: string[];
   setInboxTasks: React.Dispatch<React.SetStateAction<string[]>>;
   layoutMode: '1x4' | '2x2';
+  notes: CodingNote[];
+  setNotes: React.Dispatch<React.SetStateAction<CodingNote[]>>;
 }
 
 const CATEGORIES = [
@@ -46,6 +57,8 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
   inboxTasks: _inboxTasks,
   setInboxTasks,
   layoutMode,
+  notes,
+  setNotes,
 }) => {
   // MM/DD/YY → timestamp. new Date("05/29/26") returns 1926, not 2026.
   const parseTaskDate = (s: string): number => {
@@ -455,6 +468,119 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
       setPrioritiesMonth(updated);
     }
   };
+
+  // ----------------------------------------------------
+  // STICKY NOTES (freeform bug fixes / ideas)
+  // ----------------------------------------------------
+  // activeNote: null = closed, 'new' = create modal, otherwise an existing note id.
+  const [activeNote, setActiveNote] = useState<string | null>(null);
+  const [isNoteEditing, setIsNoteEditing] = useState(false);
+  const [noteDraft, setNoteDraft] = useState<{ title: string; body: string; project: CodingCategory }>({
+    title: '',
+    body: '',
+    project: 'pe-app',
+  });
+  const [noteCopied, setNoteCopied] = useState(false);
+  const noteCopyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (noteCopyTimerRef.current !== null) clearTimeout(noteCopyTimerRef.current);
+  }, []);
+
+  const openNewNote = () => {
+    setNoteDraft({ title: '', body: '', project: 'pe-app' });
+    setIsNoteEditing(true);
+    setNoteCopied(false);
+    setActiveNote('new');
+  };
+
+  const openExistingNote = (note: CodingNote) => {
+    setNoteDraft({ title: note.title, body: note.body, project: note.project });
+    setIsNoteEditing(false);
+    setNoteCopied(false);
+    setActiveNote(note.id);
+  };
+
+  const closeNote = () => {
+    setActiveNote(null);
+    setIsNoteEditing(false);
+    setNoteCopied(false);
+  };
+
+  const saveNote = () => {
+    const title = noteDraft.title.trim();
+    const body = noteDraft.body.trim();
+    // Need at least one of title/body to keep a note around.
+    if (!title && !body) {
+      closeNote();
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    if (activeNote === 'new') {
+      const newNote: CodingNote = {
+        id: crypto.randomUUID(),
+        title: title || 'Untitled note',
+        body,
+        project: noteDraft.project,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+      setNotes(prev => [newNote, ...prev]);
+      closeNote();
+      return;
+    }
+    setNotes(prev =>
+      prev.map(n =>
+        n.id === activeNote
+          ? { ...n, title: title || 'Untitled note', body, project: noteDraft.project, updatedAt: nowIso }
+          : n,
+      ),
+    );
+    setIsNoteEditing(false);
+  };
+
+  const deleteNote = (id: string) => {
+    const target = notes.find(n => n.id === id);
+    const label = target?.title ? `"${target.title}"` : 'this note';
+    if (!window.confirm(`Delete ${label}? This cannot be undone.`)) return;
+    setNotes(prev => prev.filter(n => n.id !== id));
+    if (activeNote === id) closeNote();
+  };
+
+  const copyNoteToClipboard = (note: { title: string; body: string }) => {
+    // Title + body reads cleanly when pasted into Claude Code.
+    const text = note.title ? `${note.title}\n\n${note.body}` : note.body;
+    const flash = () => {
+      setNoteCopied(true);
+      if (noteCopyTimerRef.current !== null) clearTimeout(noteCopyTimerRef.current);
+      noteCopyTimerRef.current = setTimeout(() => setNoteCopied(false), 1800);
+    };
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).then(flash).catch(() => {
+        window.prompt('Copy this text:', text);
+      });
+    } else {
+      window.prompt('Copy this text:', text);
+    }
+  };
+
+  const formatNoteDate = (iso: string): string => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  const activeNoteRecord = activeNote && activeNote !== 'new' ? notes.find(n => n.id === activeNote) : null;
+  // The open modal vanished out from under us (e.g. deleted on another device) — close it.
+  useEffect(() => {
+    if (activeNote && activeNote !== 'new' && !notes.some(n => n.id === activeNote)) {
+      closeNote();
+    }
+  }, [activeNote, notes]);
 
   const activeTasks = tasks.filter(t => !t.isCompleted);
   const completedTasks = tasks.filter(t => t.isCompleted);
@@ -1202,6 +1328,184 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
           );
         })}
       </div>
+
+      {/* STICKY NOTES */}
+      <GlassCard className="sticky-notes-card">
+        <div className="sticky-notes-header">
+          <div className="sticky-notes-title-section">
+            <span className="sticky-notes-icon">📝</span>
+            <span className="title">STICKY NOTES</span>
+            <span className="count-badge">{notes.length}</span>
+          </div>
+          <button className="sticky-note-new-btn" onClick={openNewNote}>
+            + New Note
+          </button>
+        </div>
+
+        {notes.length === 0 ? (
+          <div className="sticky-notes-empty">
+            No notes yet. Jot down bug fixes, ideas, or anything you want to copy into Claude Code later.
+          </div>
+        ) : (
+          <div className="sticky-notes-grid">
+            {notes.map(note => {
+              const cat = CATEGORIES.find(c => c.id === note.project);
+              return (
+                <div
+                  key={note.id}
+                  className={`sticky-note-card sticky-note-${note.project}`}
+                  onClick={() => openExistingNote(note)}
+                  title="Click to open"
+                >
+                  <div className="sticky-note-card-top">
+                    <span className="sticky-note-card-title">{note.title || 'Untitled note'}</span>
+                    <button
+                      type="button"
+                      className="sticky-note-card-delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteNote(note.id);
+                      }}
+                      title="Delete note"
+                      aria-label="Delete note"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="sticky-note-card-body">
+                    {note.body || <span className="sticky-note-card-empty">(no body yet)</span>}
+                  </div>
+                  <div className="sticky-note-card-footer">
+                    <span className="sticky-note-card-tag" style={{ color: cat?.color, backgroundColor: `rgba(${cat?.rgb || '255,255,255'}, 0.12)` }}>
+                      {cat?.label}
+                    </span>
+                    <span className="sticky-note-card-date">{formatNoteDate(note.updatedAt)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </GlassCard>
+
+      {/* STICKY NOTE MODAL (create / view / edit) */}
+      {activeNote !== null && (
+        <div className="sticky-note-modal-overlay" onClick={closeNote}>
+          <GlassCard
+            className={`sticky-note-modal sticky-note-${noteDraft.project}`}
+            accentColor={CATEGORIES.find(c => c.id === noteDraft.project)?.rgb}
+            style={{ cursor: 'default' }}
+          >
+            <div onClick={(e) => e.stopPropagation()}>
+              <div className="sticky-note-modal-header">
+                <span className="sticky-note-modal-eyebrow">
+                  {activeNote === 'new' ? 'New Note' : isNoteEditing ? 'Editing Note' : 'Note'}
+                </span>
+                <button
+                  type="button"
+                  className="sticky-note-modal-close"
+                  onClick={closeNote}
+                  title="Close"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {isNoteEditing ? (
+                <>
+                  <input
+                    type="text"
+                    className="sticky-note-modal-title-input"
+                    placeholder="Title (e.g. Bug: login redirect loop)"
+                    value={noteDraft.title}
+                    onChange={(e) => setNoteDraft(prev => ({ ...prev, title: e.target.value }))}
+                    autoFocus
+                  />
+                  <select
+                    className="sticky-note-modal-select"
+                    value={noteDraft.project}
+                    onChange={(e) => setNoteDraft(prev => ({ ...prev, project: e.target.value as CodingCategory }))}
+                  >
+                    <option value="pe-app">PE App</option>
+                    <option value="project-27">Project 27</option>
+                    <option value="productivity">Productivity</option>
+                    <option value="new-projects">New Projects</option>
+                  </select>
+                  <textarea
+                    className="sticky-note-modal-textarea"
+                    placeholder="Write your note here — bug details, ideas, multi-line thoughts…"
+                    value={noteDraft.body}
+                    onChange={(e) => setNoteDraft(prev => ({ ...prev, body: e.target.value }))}
+                    rows={12}
+                  />
+                </>
+              ) : (
+                <>
+                  <h2 className="sticky-note-modal-title-view">{noteDraft.title || 'Untitled note'}</h2>
+                  <div className="sticky-note-modal-meta">
+                    <span
+                      className="sticky-note-card-tag"
+                      style={{
+                        color: CATEGORIES.find(c => c.id === noteDraft.project)?.color,
+                        backgroundColor: `rgba(${CATEGORIES.find(c => c.id === noteDraft.project)?.rgb || '255,255,255'}, 0.12)`,
+                      }}
+                    >
+                      {CATEGORIES.find(c => c.id === noteDraft.project)?.label}
+                    </span>
+                    {activeNoteRecord && (
+                      <span className="sticky-note-modal-timestamps">
+                        Updated {formatNoteDate(activeNoteRecord.updatedAt)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="sticky-note-modal-body-view">
+                    {noteDraft.body || <span className="sticky-note-card-empty">(no body)</span>}
+                  </div>
+                </>
+              )}
+
+              <div className="sticky-note-modal-actions">
+                <div className="sticky-note-modal-actions-left">
+                  {activeNote !== 'new' && (
+                    <button
+                      type="button"
+                      className="sticky-note-btn-delete"
+                      onClick={() => deleteNote(activeNote)}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+                <div className="sticky-note-modal-actions-right">
+                  {isNoteEditing ? (
+                    <button type="button" className="sticky-note-btn-save" onClick={saveNote}>
+                      Save
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="sticky-note-btn-edit"
+                        onClick={() => setIsNoteEditing(true)}
+                      >
+                        ✎ Edit
+                      </button>
+                      <button
+                        type="button"
+                        className={`sticky-note-btn-copy ${noteCopied ? 'copied' : ''}`}
+                        onClick={() => copyNoteToClipboard(noteDraft)}
+                      >
+                        {noteCopied ? '✓ Copied!' : '📋 Copy to Clipboard'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </GlassCard>
+        </div>
+      )}
 
       {/* COMPLETED TODAY horizontal row */}
       <GlassCard className="completed-today-card">
