@@ -34,6 +34,13 @@ const CATEGORIES = [
   { id: 'health', label: 'Health & Fitness', color: 'var(--color-health)', rgb: 'var(--color-health-rgb)' },
 ] as const;
 
+const AREA_LABELS: Record<string, string> = {
+  work: 'Work',
+  career: 'Career',
+  family: 'Home',
+  health: 'Health',
+};
+
 export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   tasks,
   setTasks,
@@ -332,6 +339,27 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
   const [bulkText, setBulkText] = useState('');
   const [bulkCategory, setBulkCategory] = useState<'work' | 'career' | 'family' | 'health'>('work');
   const [bulkTimeframe, setBulkTimeframe] = useState<'target' | 'near' | 'medium-long'>('near');
+
+  // View mode: '1' = single focus, '2' = two-column, '4' = four-column
+  const [taskViewMode, setTaskViewMode] = useState<'1' | '2' | '4'>(() => {
+    const saved = localStorage.getItem('xp_task_view_mode');
+    if (saved === '1' || saved === '2' || saved === '4') return saved;
+    return layoutMode === '2x2' ? '2' : '4';
+  });
+
+  const [focusArea, setFocusArea] = useState<'work' | 'career' | 'family' | 'health'>(() => {
+    const saved = localStorage.getItem('xp_focus_area');
+    if (saved === 'work' || saved === 'career' || saved === 'family' || saved === 'health') return saved;
+    return 'work';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('xp_task_view_mode', taskViewMode);
+  }, [taskViewMode]);
+
+  useEffect(() => {
+    localStorage.setItem('xp_focus_area', focusArea);
+  }, [focusArea]);
 
   // Historical Completions sorting state
   const [sortBy, setSortBy] = useState<'title' | 'category' | 'dateAdded' | 'dateCompleted'>('dateCompleted');
@@ -847,9 +875,41 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
         )}
       </div>
 
+      {/* Tasks section header: view mode toggle + focus area selector */}
+      <div className="tasks-section-header">
+        <div className="tasks-section-controls">
+          {taskViewMode === '1' && (
+            <div className="focus-area-selector">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat.id}
+                  className={`focus-area-btn ${focusArea === cat.id ? 'active' : ''}`}
+                  onClick={() => setFocusArea(cat.id as 'work' | 'career' | 'family' | 'health')}
+                  style={focusArea === cat.id ? { color: cat.color, borderColor: cat.color } : {}}
+                >
+                  {AREA_LABELS[cat.id]}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="view-mode-toggle">
+            {(['1', '2', '4'] as const).map(mode => (
+              <button
+                key={mode}
+                className={`view-mode-btn ${taskViewMode === mode ? 'active' : ''}`}
+                onClick={() => setTaskViewMode(mode)}
+                title={mode === '1' ? 'Single focus' : mode === '2' ? 'Two-up' : 'Four-up'}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
       {/* 4 Core Category Columns */}
-      <div className={`category-columns-grid layout-${layoutMode}`}>
-        {CATEGORIES.map(cat => {
+      <div className={`category-columns-grid layout-${taskViewMode === '1' ? 'focus' : taskViewMode === '2' ? '2x2' : '1x4'}`}>
+        {(taskViewMode === '1' ? CATEGORIES.filter(c => c.id === focusArea) : CATEGORIES).map(cat => {
           const catTasks = activeTasks.filter(t => t.category === cat.id);
           const targets = catTasks.filter(t => t.timeframe === 'target');
           const nearTerm = catTasks.filter(t => t.timeframe === 'near');
