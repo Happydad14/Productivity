@@ -361,6 +361,50 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
     localStorage.setItem('xp_focus_area', focusArea);
   }, [focusArea]);
 
+  // Per-category freeform scratchpad
+  const [freeformOpen, setFreeformOpen] = useState<Record<string, boolean>>({});
+  const [freeformText, setFreeformText] = useState<Record<string, string>>({});
+
+  const handleFreeformImport = (catId: string) => {
+    const lines = activeTasks
+      .filter(t => t.category === catId)
+      .map(t => t.title)
+      .join('\n');
+    if (!lines) return;
+    setFreeformText(prev => {
+      const existing = (prev[catId] || '').trimEnd();
+      return { ...prev, [catId]: existing ? `${existing}\n\n${lines}` : lines };
+    });
+  };
+
+  const handleFreeformExport = (catId: string) => {
+    const text = freeformText[catId] || '';
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    if (lines.length === 0) return;
+
+    const existingTitles = new Set(
+      activeTasks.filter(t => t.category === catId).map(t => t.title.toLowerCase()),
+    );
+
+    const exportDate = new Date().toLocaleDateString('en-US', {
+      month: '2-digit', day: '2-digit', year: '2-digit',
+    });
+
+    const toAdd: Task[] = lines
+      .filter(line => !existingTitles.has(line.toLowerCase()))
+      .map(line => ({
+        id: crypto.randomUUID(),
+        title: line,
+        category: catId as Task['category'],
+        timeframe: 'near' as const,
+        isCompleted: false,
+        dateAdded: exportDate,
+      }));
+
+    if (toAdd.length > 0) setTasks(prev => [...prev, ...toAdd]);
+    setFreeformText(prev => ({ ...prev, [catId]: '' }));
+  };
+
   // Historical Completions sorting state
   const [sortBy, setSortBy] = useState<'title' | 'category' | 'dateAdded' | 'dateCompleted'>('dateCompleted');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -919,6 +963,44 @@ export const TabDailyDashboard: React.FC<TabDailyDashboardProps> = ({
             <GlassCard key={cat.id} accentColor={cat.rgb} className="category-column">
               <div className="cat-column-header" style={{ color: cat.color }}>
                 <span className="cat-label">{cat.label}</span>
+              </div>
+
+              {/* FREEFORM SCRATCHPAD */}
+              <div className="freeform-panel">
+                <button
+                  className="freeform-toggle"
+                  onClick={() => setFreeformOpen(prev => ({ ...prev, [cat.id]: !prev[cat.id] }))}
+                  style={{ color: freeformOpen[cat.id] ? cat.color : undefined }}
+                >
+                  {freeformOpen[cat.id] ? '▼' : '▶'} Freeform
+                </button>
+                {freeformOpen[cat.id] && (
+                  <div className="freeform-body">
+                    <textarea
+                      className="freeform-textarea"
+                      placeholder={`Type ${AREA_LABELS[cat.id]} task ideas here, one per line…`}
+                      value={freeformText[cat.id] || ''}
+                      onChange={(e) => setFreeformText(prev => ({ ...prev, [cat.id]: e.target.value }))}
+                      rows={5}
+                    />
+                    <div className="freeform-actions">
+                      <button
+                        className="freeform-btn freeform-btn-import"
+                        onClick={() => handleFreeformImport(cat.id)}
+                        title={`Append all active ${cat.label} tasks as lines`}
+                      >
+                        ↓ Import from {AREA_LABELS[cat.id]}
+                      </button>
+                      <button
+                        className="freeform-btn freeform-btn-export"
+                        onClick={() => handleFreeformExport(cat.id)}
+                        title={`Create Near Term tasks from each line (skips duplicates)`}
+                      >
+                        ↑ Export to {AREA_LABELS[cat.id]}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* TARGETS SECTION */}

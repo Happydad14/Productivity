@@ -1132,6 +1132,126 @@ body {
 [data-theme='light-neumorphic'] .focus-area-btn:hover { color: #2d2418; }
 [data-theme='light-neumorphic'] .focus-area-btn.active { background: #d9d0bc; color: #2d2418; }
 
+/* ---- Per-category Freeform scratchpad ---- */
+.freeform-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.freeform-toggle {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 4px 2px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease, opacity 0.15s ease;
+  opacity: 0.65;
+}
+
+.freeform-toggle:hover {
+  opacity: 1;
+}
+
+.freeform-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  animation: freeform-expand 0.18s ease;
+}
+
+@keyframes freeform-expand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.freeform-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  padding: 8px 10px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.freeform-textarea:focus {
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.freeform-textarea::placeholder {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.freeform-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.freeform-btn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  color: var(--text-muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 5px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.freeform-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.freeform-btn-import:hover {
+  border-color: rgba(100, 200, 255, 0.35);
+}
+
+.freeform-btn-export:hover {
+  border-color: rgba(100, 255, 160, 0.35);
+}
+
+/* Light neumorphic overrides for freeform */
+[data-theme='light-neumorphic'] .freeform-toggle { color: #8a7a5a; }
+[data-theme='light-neumorphic'] .freeform-toggle:hover { color: #2d2418; }
+
+[data-theme='light-neumorphic'] .freeform-textarea {
+  background: #f7f3ec;
+  border-color: rgba(168, 145, 100, 0.25);
+  color: #2d2418;
+  box-shadow: inset 2px 2px 5px rgba(168, 145, 100, 0.18), inset -2px -2px 5px rgba(255, 252, 245, 0.8);
+}
+
+[data-theme='light-neumorphic'] .freeform-textarea:focus { border-color: rgba(168, 145, 100, 0.5); }
+
+[data-theme='light-neumorphic'] .freeform-btn {
+  background: #ece5d8;
+  border-color: rgba(168, 145, 100, 0.25);
+  color: #5a4a32;
+  box-shadow: 2px 2px 4px rgba(168, 145, 100, 0.18), -2px -2px 4px rgba(255, 252, 245, 0.8);
+}
+
+[data-theme='light-neumorphic'] .freeform-btn:hover { color: #2d2418; background: #e0d8c8; }
+
 .category-column {
   display: flex;
   flex-direction: column;
