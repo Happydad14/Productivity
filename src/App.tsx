@@ -5,6 +5,7 @@ import { TabHealthScorecard, type Habit } from './components/TabHealthScorecard'
 import { TabGoalsTargets, type Goal } from './components/TabGoalsTargets';
 import { TabCodingProjects, type CodingTask, type CodingNote } from './components/TabCodingProjects';
 import { TabFreeform } from './components/TabFreeform';
+import { TabDailyNotes } from './components/TabDailyNotes';
 import { TaskInbox } from './components/TaskInbox';
 
 // ----------------------------------------------------
@@ -213,7 +214,7 @@ export default function App() {
     }
   };
 
-  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals' | 'coding' | 'freeform'>('daily');
+  const [activeTab, setActiveTab] = useState<'daily' | 'health' | 'goals' | 'coding' | 'freeform' | 'notes'>('daily');
   const [theme, setTheme] = useState<'dark-glassmorphism' | 'light-neumorphic' | 'cyberpunk'>('dark-glassmorphism');
   const [layoutMode, setLayoutMode] = useState<'1x4' | '2x2'>(() => {
     const saved = localStorage.getItem('xp_layout_mode');
@@ -655,6 +656,12 @@ export default function App() {
             Coding Projects
           </button>
           <button
+            className={`tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
+            onClick={() => setActiveTab('notes')}
+          >
+            Daily Notes
+          </button>
+          <button
             className={`tab-btn ${activeTab === 'freeform' ? 'active' : ''}`}
             onClick={() => setActiveTab('freeform')}
           >
@@ -740,6 +747,9 @@ export default function App() {
             notes={codingNotes}
             setNotes={setCodingNotes}
           />
+        )}
+        {activeTab === 'notes' && (
+          <TabDailyNotes />
         )}
         {activeTab === 'freeform' && (
           <TabFreeform
