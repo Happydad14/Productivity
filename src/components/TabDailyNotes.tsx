@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GlassCard } from './GlassCard';
 
-const NOTES_PREFIX = 'xp_daily_notes_';
 const CURRENT_DATE_KEY = 'xp_daily_notes_current_date';
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -33,78 +32,83 @@ function getWeekKeys(anchorKey: string): string[] {
   });
 }
 
-function readNote(key: string): string {
-  try { return localStorage.getItem(NOTES_PREFIX + key) ?? ''; } catch { return ''; }
+interface TabDailyNotesProps {
+  // Shared, cloud-synced date→content map (owned by App, persisted + synced there).
+  notes: Record<string, string>;
+  setNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
 }
 
-function writeNote(key: string, content: string): void {
-  try {
-    if (content.trim()) localStorage.setItem(NOTES_PREFIX + key, content);
-    else localStorage.removeItem(NOTES_PREFIX + key);
-  } catch { /* quota exceeded or private mode */ }
-}
-
-function computeStreak(): number {
-  let streak = 0;
-  let key = todayKey();
-  while (readNote(key).trim() && streak <= 3650) {
-    streak++;
-    key = shiftDate(key, -1);
-  }
-  return streak;
-}
-
-export const TabDailyNotes: React.FC = () => {
+export const TabDailyNotes: React.FC<TabDailyNotesProps> = ({ notes, setNotes }) => {
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     try { return localStorage.getItem(CURRENT_DATE_KEY) ?? todayKey(); } catch { return todayKey(); }
   });
 
-  const [draft, setDraft] = useState(() => readNote(selectedDate));
+  const [draft, setDraft] = useState<string>(() => notes[selectedDate] ?? '');
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
-  const [streak, setStreak] = useState(computeStreak);
   const [copyMsg, setCopyMsg] = useState<string | null>(null);
 
-  const lastCommittedRef = useRef(readNote(selectedDate));
+  const lastCommittedRef = useRef<string>(notes[selectedDate] ?? '');
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const today = todayKey();
   const weekKeys = useMemo(() => getWeekKeys(selectedDate), [selectedDate]);
-  const [weekDots, setWeekDots] = useState<Record<string, boolean>>({});
 
-  const refreshDots = useCallback((keys: string[]) => {
-    setWeekDots(Object.fromEntries(keys.map(k => [k, !!readNote(k).trim()])));
-  }, []);
+  // Streak: consecutive days with notes ending today — derived from shared state.
+  const streak = useMemo(() => {
+    let count = 0;
+    let key = today;
+    while (notes[key]?.trim() && count <= 3650) {
+      count++;
+      key = shiftDate(key, -1);
+    }
+    return count;
+  }, [notes, today]);
 
-  // Load note when date changes
+  // Which days in the visible week have content (drives the dots).
+  const weekDots = useMemo(
+    () => Object.fromEntries(weekKeys.map(k => [k, !!notes[k]?.trim()])),
+    [weekKeys, notes],
+  );
+
+  // Persist the selected date (device-local UI state — intentionally not synced).
   useEffect(() => {
-    const note = readNote(selectedDate);
-    setDraft(note);
-    lastCommittedRef.current = note;
-    setSaveState('idle');
     try { localStorage.setItem(CURRENT_DATE_KEY, selectedDate); } catch { /* ignore */ }
   }, [selectedDate]);
 
-  // Refresh week dots when week changes
-  useEffect(() => { refreshDots(weekKeys); }, [weekKeys, refreshDots]);
+  // Adopt the stored note for the selected day — on date change, or when a
+  // remote sync brings in new content. Guarded against clobbering our own
+  // just-committed write (incoming === lastCommitted) so typing is never lost.
+  useEffect(() => {
+    const incoming = notes[selectedDate] ?? '';
+    if (incoming !== lastCommittedRef.current) {
+      setDraft(incoming);
+      lastCommittedRef.current = incoming;
+      setSaveState('idle');
+    }
+  }, [selectedDate, notes]);
 
-  // Debounced autosave
+  // Debounced autosave into the shared record — App persists it to localStorage
+  // and pushes it to the cloud, so notes reach every device.
   useEffect(() => {
     if (draft === lastCommittedRef.current) return;
     setSaveState('saving');
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       lastCommittedRef.current = draft;
-      writeNote(selectedDate, draft);
+      setNotes(prev => {
+        const next = { ...prev };
+        if (draft.trim()) next[selectedDate] = draft;
+        else delete next[selectedDate];
+        return next;
+      });
       setSaveState('saved');
-      setStreak(computeStreak());
-      refreshDots(weekKeys);
       if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
       savedFlashRef.current = setTimeout(() => setSaveState('idle'), 1500);
     }, 500);
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
-  }, [draft, selectedDate, weekKeys, refreshDots]);
+  }, [draft, selectedDate, setNotes]);
 
   // Cleanup timers on unmount
   useEffect(() => () => {
@@ -136,7 +140,7 @@ export const TabDailyNotes: React.FC = () => {
         <div className="daily-notes-header-content">
           <div>
             <div className="dn-title">Daily Notes</div>
-            <div className="dn-subtitle">A dated scratchpad — one page per day, auto-saved as you type.</div>
+            <div className="dn-subtitle">A dated scratchpad — one page per day, auto-saved and synced across your devices.</div>
           </div>
           <div className="daily-notes-header-meta">
             {streak > 0 && (

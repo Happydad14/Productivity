@@ -114,6 +114,66 @@ const INITIAL_GOALS = (): Goal[] => [
   { id: 'g9', title: 'Run an official marathon under 4 hours', category: 'health', term: 'long', isAchieved: false, dateAdded: '05/01/26' },
 ];
 
+// ----------------------------------------------------
+// DAILY NOTES STORAGE (consolidated + cloud-synced)
+// ----------------------------------------------------
+const DAILY_NOTES_KEY = 'xp_daily_notes_v2';
+const DAILY_NOTES_MIGRATION_FLAG = 'xp_daily_notes_consolidated_v1';
+
+// Union two date→content maps. On a same-day collision, keep the longer text
+// so cross-device merges never silently drop content one device is missing.
+// (Deliberately retention-biased: notes should never vanish on a sync.)
+const mergeNotes = (
+  a: Record<string, string> = {},
+  b: Record<string, string> = {},
+): Record<string, string> => {
+  const out: Record<string, string> = { ...a };
+  for (const [date, text] of Object.entries(b)) {
+    const existing = out[date];
+    if (existing === undefined || text.trim().length > existing.trim().length) {
+      out[date] = text;
+    }
+  }
+  return out;
+};
+
+// Load consolidated daily notes. One-time, migrate any legacy per-day keys
+// (xp_daily_notes_YYYY-MM-DD) written by the pre-sync version into the single
+// blob, then delete them so a removed note can't be resurrected on next load.
+const loadDailyNotes = (): Record<string, string> => {
+  if (typeof window === 'undefined') return {};
+  let record: Record<string, string> = {};
+  try {
+    const blob = localStorage.getItem(DAILY_NOTES_KEY);
+    if (blob) record = JSON.parse(blob) as Record<string, string>;
+  } catch {
+    record = {};
+  }
+
+  if (localStorage.getItem(DAILY_NOTES_MIGRATION_FLAG) !== 'done') {
+    try {
+      const legacy: Record<string, string> = {};
+      const legacyKeys: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        const m = k && /^xp_daily_notes_(\d{4}-\d{2}-\d{2})$/.exec(k);
+        if (m) {
+          legacyKeys.push(k as string);
+          const v = localStorage.getItem(k as string);
+          if (v && v.trim()) legacy[m[1]] = v;
+        }
+      }
+      record = mergeNotes(record, legacy);
+      legacyKeys.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem(DAILY_NOTES_KEY, JSON.stringify(record));
+      localStorage.setItem(DAILY_NOTES_MIGRATION_FLAG, 'done');
+    } catch {
+      /* ignore quota / parse errors — non-fatal */
+    }
+  }
+  return record;
+};
+
 const AUTH_TOKEN_KEY = 'xp_auth_token';
 
 // Derive a stable, deterministic token from the access key so the stored
@@ -376,6 +436,9 @@ export default function App() {
     }
   });
 
+  // Daily Notes — a date→content map, consolidated from legacy per-day keys.
+  const [dailyNotes, setDailyNotes] = useState<Record<string, string>>(loadDailyNotes);
+
   // Sync to LocalStorage (Acts as our permanent local database)
   useEffect(() => {
     localStorage.setItem('xp_tasks', JSON.stringify(tasks));
@@ -426,6 +489,10 @@ export default function App() {
   }, [codingNotes]);
 
   useEffect(() => {
+    localStorage.setItem(DAILY_NOTES_KEY, JSON.stringify(dailyNotes));
+  }, [dailyNotes]);
+
+  useEffect(() => {
     localStorage.setItem('xp_layout_mode', layoutMode);
   }, [layoutMode]);
 
@@ -458,6 +525,7 @@ export default function App() {
     codingPrioritiesWeek: string[];
     codingPrioritiesMonth: string[];
     codingNotes: CodingNote[];
+    dailyNotes: Record<string, string>;
   };
 
   const applyRemote = (data: Partial<CloudState>) => {
@@ -476,6 +544,11 @@ export default function App() {
     if (Array.isArray(data.codingPrioritiesWeek)) setCodingPrioritiesWeek(data.codingPrioritiesWeek);
     if (Array.isArray(data.codingPrioritiesMonth)) setCodingPrioritiesMonth(data.codingPrioritiesMonth);
     if (Array.isArray(data.codingNotes)) setCodingNotes(data.codingNotes);
+    // Merge (not replace) so notes only on this device — e.g. days typed
+    // before sync existed — survive a pull instead of being overwritten.
+    if (data.dailyNotes && typeof data.dailyNotes === 'object') {
+      setDailyNotes(prev => mergeNotes(prev, data.dailyNotes as Record<string, string>));
+    }
   };
 
   // Initial pull on auth
@@ -508,8 +581,8 @@ export default function App() {
   }, [isAuthenticated, authToken]);
 
   const cloudState = useMemo<CloudState>(
-    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes }),
-    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes]
+    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes }),
+    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes]
   );
 
   // Debounced push when anything changes
@@ -749,7 +822,7 @@ export default function App() {
           />
         )}
         {activeTab === 'notes' && (
-          <TabDailyNotes />
+          <TabDailyNotes notes={dailyNotes} setNotes={setDailyNotes} />
         )}
         {activeTab === 'freeform' && (
           <TabFreeform
