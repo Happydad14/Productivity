@@ -5194,3 +5194,388 @@ body {
   border-color: rgba(0, 255, 204, 0.4);
 }
 [data-theme='cyberpunk'] .daily-notes-week-day.is-today .daily-notes-week-num { color: #00ffcc; }
+
+/* ==========================================================================
+   FLOATING POMODORO TIMER — persistent, draggable widget (all tabs)
+   ========================================================================== */
+.pomo-pill,
+.pomo-card {
+  position: fixed;
+  z-index: 1001;
+  background: rgba(8, 14, 30, 0.88);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  color: inherit;
+  user-select: none;
+  --pomo-accent: #f97316;
+  --pomo-accent-rgb: 249, 115, 22;
+}
+
+.pomo-mode-short,
+.pomo-mode-long {
+  --pomo-accent: #10b981;
+  --pomo-accent-rgb: 16, 185, 129;
+}
+
+.pomo-mode-long {
+  --pomo-accent: #0ea5e9;
+  --pomo-accent-rgb: 14, 165, 233;
+}
+
+/* ------------------------- Collapsed pill ------------------------- */
+.pomo-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  cursor: grab;
+  overflow: hidden;
+  touch-action: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.pomo-pill:hover {
+  border-color: rgba(var(--pomo-accent-rgb), 0.55);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), 0 0 18px rgba(var(--pomo-accent-rgb), 0.25);
+}
+
+.pomo-pill:active { cursor: grabbing; }
+
+.pomo-pill-emoji { font-size: 1rem; line-height: 1; }
+
+.pomo-pill-time {
+  font-family: 'Outfit', 'Inter', monospace;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pomo-running .pomo-pill-time { color: rgb(var(--pomo-accent-rgb)); }
+
+.pomo-pill-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(var(--pomo-accent-rgb), 0.5);
+  background: rgba(var(--pomo-accent-rgb), 0.18);
+  color: #fff;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.pomo-pill-action:hover { background: rgba(var(--pomo-accent-rgb), 0.38); }
+
+.pomo-pill-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgb(var(--pomo-accent-rgb));
+  border-radius: 2px;
+  transition: width 0.4s linear;
+  pointer-events: none;
+}
+
+/* ------------------------- Expanded card ------------------------- */
+.pomo-card {
+  width: 264px;
+  border-radius: 18px;
+  padding: 0 16px 14px 16px;
+}
+
+.pomo-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 -16px;
+  padding: 10px 14px;
+  cursor: grab;
+  touch-action: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pomo-card-header:active { cursor: grabbing; }
+
+.pomo-card-grip {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  letter-spacing: -2px;
+}
+
+.pomo-card-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex: 1;
+}
+
+.pomo-card-header-btns { display: flex; gap: 4px; }
+
+.pomo-icon-btn {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pomo-icon-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.pomo-mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 12px 0 4px 0;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.pomo-mode-tab {
+  flex: 1;
+  padding: 5px 2px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.pomo-mode-tab:hover { color: #fff; }
+
+.pomo-mode-tab.active {
+  background: rgba(var(--pomo-accent-rgb), 0.25);
+  color: #fff;
+}
+
+.pomo-clock-wrap {
+  position: relative;
+  width: 160px;
+  height: 160px;
+  margin: 8px auto;
+}
+
+.pomo-ring {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.pomo-ring-track,
+.pomo-ring-fill {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+}
+
+.pomo-ring-track { stroke: rgba(255, 255, 255, 0.09); }
+
+.pomo-ring-fill {
+  stroke: rgb(var(--pomo-accent-rgb));
+  filter: drop-shadow(0 0 6px rgba(var(--pomo-accent-rgb), 0.6));
+  transition: stroke-dashoffset 0.4s linear;
+}
+
+.pomo-clock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.pomo-clock-time {
+  font-family: 'Outfit', 'Inter', monospace;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.pomo-clock-mode {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgb(var(--pomo-accent-rgb));
+}
+
+.pomo-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pomo-ctl-btn {
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pomo-ctl-btn:hover { background: rgba(255, 255, 255, 0.14); }
+
+.pomo-ctl-primary {
+  flex: 1;
+  max-width: 140px;
+  background: rgba(var(--pomo-accent-rgb), 0.28);
+  border-color: rgba(var(--pomo-accent-rgb), 0.55);
+}
+
+.pomo-ctl-primary:hover { background: rgba(var(--pomo-accent-rgb), 0.45); }
+
+.pomo-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  gap: 8px;
+}
+
+.pomo-cycles {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pomo-cycle-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.pomo-cycle-dot.filled {
+  background: rgb(var(--pomo-accent-rgb));
+  box-shadow: 0 0 5px rgba(var(--pomo-accent-rgb), 0.6);
+}
+
+.pomo-cycles-label {
+  margin-left: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.pomo-autostart {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pomo-autostart input { accent-color: rgb(var(--pomo-accent-rgb)); cursor: pointer; }
+
+.pomo-settings {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pomo-setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pomo-setting-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.65rem;
+  color: var(--text-dim);
+}
+
+.pomo-setting-row input {
+  width: 56px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.pomo-setting-row input:focus {
+  outline: none;
+  border-color: rgba(var(--pomo-accent-rgb), 0.6);
+}
+
+/* ------------------- Light neumorphic theme ------------------- */
+[data-theme='light-neumorphic'] .pomo-pill,
+[data-theme='light-neumorphic'] .pomo-card {
+  background: #ece5d8;
+  border: none;
+  box-shadow: 8px 8px 20px rgba(168, 145, 100, 0.35), -8px -8px 20px rgba(255, 252, 245, 0.95);
+  color: #2d2418;
+}
+
+[data-theme='light-neumorphic'] .pomo-card-header { border-bottom-color: rgba(168, 145, 100, 0.2); }
+[data-theme='light-neumorphic'] .pomo-mode-tabs { background: #e0d8c5; }
+[data-theme='light-neumorphic'] .pomo-mode-tab:hover { color: #2d2418; }
+[data-theme='light-neumorphic'] .pomo-mode-tab.active { color: #2d2418; }
+[data-theme='light-neumorphic'] .pomo-ring-track { stroke: rgba(168, 145, 100, 0.25); }
+[data-theme='light-neumorphic'] .pomo-clock-time { color: #2d2418; }
+[data-theme='light-neumorphic'] .pomo-pill-action,
+[data-theme='light-neumorphic'] .pomo-ctl-btn { color: #2d2418; border-color: rgba(168, 145, 100, 0.3); background: #f2ecdf; }
+[data-theme='light-neumorphic'] .pomo-ctl-primary { background: rgba(var(--pomo-accent-rgb), 0.22); }
+[data-theme='light-neumorphic'] .pomo-icon-btn:hover { background: rgba(0, 0, 0, 0.07); color: #2d2418; }
+[data-theme='light-neumorphic'] .pomo-setting-row input {
+  background: #f7f3ec;
+  border-color: rgba(168, 145, 100, 0.3);
+  color: #2d2418;
+}
+[data-theme='light-neumorphic'] .pomo-cycle-dot { background: rgba(168, 145, 100, 0.3); }
+[data-theme='light-neumorphic'] .pomo-settings { border-top-color: rgba(168, 145, 100, 0.2); }
+
+/* ------------------- Cyberpunk theme ------------------- */
+[data-theme='cyberpunk'] .pomo-pill,
+[data-theme='cyberpunk'] .pomo-card {
+  background: rgba(2, 8, 14, 0.9);
+  border-color: rgba(0, 255, 204, 0.3);
+}
+
+/* Small screens: keep the expanded card comfortably inside the viewport */
+@media (max-width: 480px) {
+  .pomo-card { width: 240px; }
+}

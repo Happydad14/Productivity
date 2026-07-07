@@ -7,6 +7,7 @@ import { TabCodingProjects, type CodingTask, type CodingNote } from './component
 import { TabFreeform } from './components/TabFreeform';
 import { TabDailyNotes } from './components/TabDailyNotes';
 import { TaskInbox } from './components/TaskInbox';
+import { PomodoroTimer } from './components/PomodoroTimer';
 
 // ----------------------------------------------------
 // DEFAULT HIGH-FIDELITY DOCK DATASETS
@@ -835,6 +836,10 @@ export default function App() {
       </main>
 
       <TaskInbox items={inboxTasks} setItems={setInboxTasks} />
+
+      {/* Floating pomodoro — mounted at app level so the countdown persists
+          across every tab; draggable, collapsible, position remembered. */}
+      <PomodoroTimer />
     </div>
   );
 }
