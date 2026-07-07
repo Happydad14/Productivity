@@ -51,6 +51,11 @@ export const TabDailyNotes: React.FC<TabDailyNotesProps> = ({ notes, setNotes })
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Latest draft + the date it belongs to, readable from cleanups/effects
+  // without stale closures — used to flush un-debounced edits.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const prevDateRef = useRef(selectedDate);
 
   const today = todayKey();
   const weekKeys = useMemo(() => getWeekKeys(selectedDate), [selectedDate]);
@@ -77,16 +82,44 @@ export const TabDailyNotes: React.FC<TabDailyNotesProps> = ({ notes, setNotes })
     try { localStorage.setItem(CURRENT_DATE_KEY, selectedDate); } catch { /* ignore */ }
   }, [selectedDate]);
 
+  // Write `text` into the shared record for `date` (empty text deletes the day).
+  const commitDraft = (date: string, text: string) => {
+    setNotes(prev => {
+      const next = { ...prev };
+      if (text.trim()) next[date] = text;
+      else delete next[date];
+      return next;
+    });
+  };
+
   // Adopt the stored note for the selected day — on date change, or when a
   // remote sync brings in new content. Guarded against clobbering our own
   // just-committed write (incoming === lastCommitted) so typing is never lost.
   useEffect(() => {
+    if (prevDateRef.current !== selectedDate) {
+      // Navigating days: flush any edits still sitting in the 500ms debounce
+      // for the day we're leaving, so fast prev/next clicks can't drop them.
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      if (draftRef.current !== lastCommittedRef.current) {
+        commitDraft(prevDateRef.current, draftRef.current);
+      }
+      prevDateRef.current = selectedDate;
+      const incoming = notes[selectedDate] ?? '';
+      setDraft(incoming);
+      lastCommittedRef.current = incoming;
+      setSaveState('idle');
+      return;
+    }
     const incoming = notes[selectedDate] ?? '';
     if (incoming !== lastCommittedRef.current) {
       setDraft(incoming);
       lastCommittedRef.current = incoming;
       setSaveState('idle');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, notes]);
 
   // Debounced autosave into the shared record — App persists it to localStorage
@@ -97,12 +130,7 @@ export const TabDailyNotes: React.FC<TabDailyNotesProps> = ({ notes, setNotes })
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       lastCommittedRef.current = draft;
-      setNotes(prev => {
-        const next = { ...prev };
-        if (draft.trim()) next[selectedDate] = draft;
-        else delete next[selectedDate];
-        return next;
-      });
+      commitDraft(selectedDate, draft);
       setSaveState('saved');
       if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
       savedFlashRef.current = setTimeout(() => setSaveState('idle'), 1500);
@@ -110,11 +138,23 @@ export const TabDailyNotes: React.FC<TabDailyNotesProps> = ({ notes, setNotes })
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [draft, selectedDate, setNotes]);
 
-  // Cleanup timers on unmount
+  // On unmount: clear timers, but FLUSH (not drop) an in-flight debounced
+  // save — otherwise switching tabs within 500ms of typing loses it.
+  // setNotes is a stable setter and the parent stays mounted, so this is safe.
   useEffect(() => () => {
     [saveTimerRef, savedFlashRef, copyTimerRef].forEach(r => {
       if (r.current) clearTimeout(r.current);
     });
+    if (draftRef.current !== lastCommittedRef.current) {
+      lastCommittedRef.current = draftRef.current;
+      setNotes(prev => {
+        const next = { ...prev };
+        if (draftRef.current.trim()) next[prevDateRef.current] = draftRef.current;
+        else delete next[prevDateRef.current];
+        return next;
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigate = (delta: number) => setSelectedDate(prev => shiftDate(prev, delta));

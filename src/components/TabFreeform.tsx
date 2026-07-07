@@ -40,6 +40,9 @@ export const TabFreeform: React.FC<TabFreeformProps> = ({
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastCommittedRef = useRef(content);
+  // Latest draft, readable from the unmount cleanup without stale closures.
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -72,13 +75,20 @@ export const TabFreeform: React.FC<TabFreeformProps> = ({
     };
   }, [draft, setContent]);
 
-  // Cleanup any pending timers on unmount.
+  // On unmount: clear pending timers, but FLUSH (not drop) an in-flight
+  // debounced save — otherwise switching tabs within 500ms of the last
+  // keystroke silently loses it. setContent is a stable useState setter,
+  // and the parent stays mounted, so committing here is safe.
   useEffect(() => () => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFlashRef.current) clearTimeout(savedFlashRef.current);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     if (longPressRef.current) clearTimeout(longPressRef.current);
-  }, []);
+    if (draftRef.current !== lastCommittedRef.current) {
+      lastCommittedRef.current = draftRef.current;
+      setContent(draftRef.current);
+    }
+  }, [setContent]);
 
   // Dismiss the context menu on any outside interaction / scroll / escape.
   useEffect(() => {

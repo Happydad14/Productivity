@@ -96,8 +96,10 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
     setNewGoalTexts(prev => ({ ...prev, [key]: '' }));
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    setGoals(prev => prev.filter(g => g.id !== goalId));
+  const handleDeleteGoal = (goal: Goal) => {
+    // Confirm like tasks/notes do — a goal is a single misclick from vanishing otherwise.
+    if (!window.confirm(`Delete goal "${goal.title}"? This cannot be undone.`)) return;
+    setGoals(prev => prev.filter(g => g.id !== goal.id));
   };
 
   return (
@@ -162,7 +164,7 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                         </label>
                         <button 
                           className="delete-goal-btn" 
-                          onClick={() => handleDeleteGoal(goal.id)}
+                          onClick={() => handleDeleteGoal(goal)}
                           title="Delete Goal"
                         >
                           ✕
@@ -210,7 +212,7 @@ export const TabGoalsTargets: React.FC<TabGoalsTargetsProps> = ({
                         </label>
                         <button 
                           className="delete-goal-btn" 
-                          onClick={() => handleDeleteGoal(goal.id)}
+                          onClick={() => handleDeleteGoal(goal)}
                           title="Delete Goal"
                         >
                           ✕
