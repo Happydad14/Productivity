@@ -506,6 +506,19 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
     setNoteCopied(false);
   };
 
+  // Overlay click / ✕ while editing: keep the edits rather than silently
+  // discarding them — save whatever is dirty, then close.
+  const dismissNote = () => {
+    if (isNoteEditing) {
+      const record = activeNote !== 'new' ? notes.find(n => n.id === activeNote) : null;
+      const dirty = record
+        ? noteDraft.title !== record.title || noteDraft.body !== record.body || noteDraft.project !== record.project
+        : noteDraft.title.trim() !== '' || noteDraft.body.trim() !== '';
+      if (dirty) saveNote();
+    }
+    closeNote();
+  };
+
   const saveNote = () => {
     const title = noteDraft.title.trim();
     const body = noteDraft.body.trim();
@@ -573,6 +586,20 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
       minute: '2-digit',
     });
   };
+
+  // Escape closes the modal (saving dirty edits, same as clicking outside).
+  // Ref indirection keeps the listener stable while dismissNote is re-created
+  // each render.
+  const dismissNoteRef = useRef(dismissNote);
+  dismissNoteRef.current = dismissNote;
+  useEffect(() => {
+    if (activeNote === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismissNoteRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [activeNote]);
 
   const activeNoteRecord = activeNote && activeNote !== 'new' ? notes.find(n => n.id === activeNote) : null;
   // The open modal vanished out from under us (e.g. deleted on another device) — close it.
@@ -1390,7 +1417,7 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
 
       {/* STICKY NOTE MODAL (create / view / edit) */}
       {activeNote !== null && (
-        <div className="sticky-note-modal-overlay" onClick={closeNote}>
+        <div className="sticky-note-modal-overlay" onClick={dismissNote}>
           <GlassCard
             className={`sticky-note-modal sticky-note-${noteDraft.project}`}
             accentColor={CATEGORIES.find(c => c.id === noteDraft.project)?.rgb}
@@ -1404,7 +1431,7 @@ export const TabCodingProjects: React.FC<TabCodingProjectsProps> = ({
                 <button
                   type="button"
                   className="sticky-note-modal-close"
-                  onClick={closeNote}
+                  onClick={dismissNote}
                   title="Close"
                   aria-label="Close"
                 >
