@@ -113,8 +113,11 @@ export const TabDailyNotes: React.FC<TabDailyNotesProps> = ({ notes, setNotes })
       setSaveState('idle');
       return;
     }
+    // Same-date remote change: only adopt when no keystrokes are waiting on
+    // the debounce (draft === lastCommitted). Mid-typing, local wins — the
+    // pending commit + push overwrite the server (last-write-wins).
     const incoming = notes[selectedDate] ?? '';
-    if (incoming !== lastCommittedRef.current) {
+    if (incoming !== lastCommittedRef.current && draftRef.current === lastCommittedRef.current) {
       setDraft(incoming);
       lastCommittedRef.current = incoming;
       setSaveState('idle');
