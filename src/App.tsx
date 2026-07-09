@@ -529,7 +529,12 @@ export default function App() {
     dailyNotes: Record<string, string>;
   };
 
-  const applyRemote = (data: Partial<CloudState>) => {
+  // `unionLocalOnlyDays` (first pull after load only): keep note days that
+  // exist locally but not on the server — e.g. typed while sync was offline —
+  // while letting the server win on any day both sides have. The old
+  // longer-text-wins merge is gone: it kept resurrecting pre-edit versions of
+  // a note every pull whenever an edit made the note shorter.
+  const applyRemote = (data: Partial<CloudState>, unionLocalOnlyDays = false) => {
     if (Array.isArray(data.tasks)) setTasks(data.tasks);
     if (Array.isArray(data.prioritiesWeek)) setPrioritiesWeek(data.prioritiesWeek);
     if (Array.isArray(data.prioritiesMonth)) setPrioritiesMonth(data.prioritiesMonth);
@@ -545,10 +550,19 @@ export default function App() {
     if (Array.isArray(data.codingPrioritiesWeek)) setCodingPrioritiesWeek(data.codingPrioritiesWeek);
     if (Array.isArray(data.codingPrioritiesMonth)) setCodingPrioritiesMonth(data.codingPrioritiesMonth);
     if (Array.isArray(data.codingNotes)) setCodingNotes(data.codingNotes);
-    // Merge (not replace) so notes only on this device — e.g. days typed
-    // before sync existed — survive a pull instead of being overwritten.
     if (data.dailyNotes && typeof data.dailyNotes === 'object') {
-      setDailyNotes(prev => mergeNotes(prev, data.dailyNotes as Record<string, string>));
+      const incoming = data.dailyNotes as Record<string, string>;
+      if (unionLocalOnlyDays) {
+        setDailyNotes(prev => {
+          const next = { ...incoming };
+          for (const [date, text] of Object.entries(prev)) {
+            if (!(date in next) && text.trim()) next[date] = text;
+          }
+          return next;
+        });
+      } else {
+        setDailyNotes(incoming);
+      }
     }
   };
 
@@ -563,7 +577,7 @@ export default function App() {
         if (cancelled) return;
         if (state && typeof state === 'object') {
           const { lastModified, ...data } = state as CloudState & { lastModified?: number };
-          applyRemote(data);
+          applyRemote(data, true);
           cloudSyncRef.current.lastServerBlob = JSON.stringify(data);
           cloudSyncRef.current.lastModified = lastModified || 0;
         }
@@ -585,6 +599,9 @@ export default function App() {
     () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes }),
     [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes]
   );
+  // Latest cloudState, readable from the long-lived poll closure below.
+  const cloudStateRef = useRef(cloudState);
+  cloudStateRef.current = cloudState;
 
   // Debounced push when anything changes
   useEffect(() => {
@@ -623,8 +640,22 @@ export default function App() {
           if (!state || typeof state !== 'object') return;
           const { lastModified, ...data } = state as CloudState & { lastModified?: number };
           if ((lastModified || 0) <= cloudSyncRef.current.lastModified) return;
+          const incomingBlob = JSON.stringify(data);
+          const localBlob = JSON.stringify(cloudStateRef.current);
+          // Server already matches local (our own push echoing back with a
+          // newer stamp than we recorded) — just update the bookkeeping.
+          if (incomingBlob === localBlob) {
+            cloudSyncRef.current.lastServerBlob = incomingBlob;
+            cloudSyncRef.current.lastModified = lastModified || 0;
+            return;
+          }
+          // Local edits are still waiting on the debounced push (or a push is
+          // in flight). Applying the server copy now would revert active
+          // typing to an older version — skip; our push will land shortly and
+          // the next poll reconciles cleanly.
+          if (localBlob !== cloudSyncRef.current.lastServerBlob) return;
           applyRemote(data);
-          cloudSyncRef.current.lastServerBlob = JSON.stringify(data);
+          cloudSyncRef.current.lastServerBlob = incomingBlob;
           cloudSyncRef.current.lastModified = lastModified || 0;
         })
         .catch(() => {});

@@ -49,9 +49,16 @@ export const TabFreeform: React.FC<TabFreeformProps> = ({
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pull in external changes (e.g. cloud sync from another device) without
-  // clobbering whatever is being typed locally.
+  // clobbering whatever is being typed locally. `draft === lastCommitted`
+  // means no keystrokes are waiting on the debounce — only then is it safe
+  // to adopt remote content; mid-typing, local always wins (our pending
+  // commit + push overwrite the server, last-write-wins).
   useEffect(() => {
-    if (content !== draft && content !== lastCommittedRef.current) {
+    if (
+      content !== draft &&
+      content !== lastCommittedRef.current &&
+      draft === lastCommittedRef.current
+    ) {
       setDraft(content);
       lastCommittedRef.current = content;
     }
