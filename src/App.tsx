@@ -8,6 +8,8 @@ import { TabFreeform } from './components/TabFreeform';
 import { TabDailyNotes } from './components/TabDailyNotes';
 import { TaskInbox } from './components/TaskInbox';
 import { PomodoroTimer } from './components/PomodoroTimer';
+import { EditTicker } from './components/EditTicker';
+import { useOnlineStatus } from './useOnlineStatus';
 
 // ----------------------------------------------------
 // DEFAULT HIGH-FIDELITY DOCK DATASETS
@@ -199,20 +201,27 @@ const getExpectedAuthToken = (): string => {
   return deriveAuthToken(correctKey);
 };
 
-function SyncBadge({ status }: { status: 'idle' | 'syncing' | 'synced' | 'error' }) {
+type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
+
+function SyncBadge({ status }: { status: SyncStatus }) {
   const map = {
     idle: { color: '#64748b', label: 'Idle' },
     syncing: { color: '#0ea5e9', label: 'Syncing…' },
     synced: { color: '#10b981', label: 'Synced' },
-    error: { color: '#f97316', label: 'Offline' },
+    error: { color: '#f97316', label: 'Local only' },
+    offline: { color: '#f59e0b', label: 'Offline' },
   } as const;
   const { color, label } = map[status];
-  const title =
-    status === 'error'
-      ? 'Cloud sync unavailable — changes are saved locally only. Enable Vercel KV on the project to sync across devices.'
-      : status === 'synced'
-        ? 'All changes are saved to the cloud and will appear on your other devices.'
-        : label;
+  const titles: Record<SyncStatus, string> = {
+    idle: 'Idle',
+    syncing: 'Syncing…',
+    synced: 'All changes are saved to the cloud and will appear on your other devices.',
+    error:
+      'Cloud sync unavailable — changes are saved locally only. Enable Vercel KV on the project to sync across devices.',
+    offline:
+      'No connection. The app is running offline — every change is saved on this device and syncs automatically when you reconnect.',
+  };
+  const title = titles[status];
   return (
     <span
       title={title}
@@ -505,7 +514,8 @@ export default function App() {
   // ----------------------------------------------------
   // CROSS-DEVICE CLOUD SYNC (Vercel KV via /api/state)
   // ----------------------------------------------------
-  const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'synced' | 'error'>('idle');
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>('idle');
+  const isOnline = useOnlineStatus();
   const cloudSyncRef = useRef<{
     ready: boolean;
     lastServerBlob: string;
@@ -566,9 +576,41 @@ export default function App() {
     }
   };
 
-  // Initial pull on auth
+  const cloudState = useMemo<CloudState>(
+    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes }),
+    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes]
+  );
+  // Latest cloudState, readable from the long-lived poll closure below.
+  const cloudStateRef = useRef(cloudState);
+  cloudStateRef.current = cloudState;
+
+  // What localStorage held at boot. Comparing against it tells us whether the
+  // user has edited anything this session, which decides who wins when the
+  // first pull only becomes possible after some offline work (below).
+  const [loadedBlob] = useState(() => JSON.stringify(cloudState));
+
+  // Initial pull on auth, retried whenever connectivity returns until one
+  // succeeds — an app opened with no network still adopts cloud state once
+  // it can reach the server, instead of being stuck on the local copy.
+  const initialPullDoneRef = useRef(false);
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || initialPullDoneRef.current) return;
+
+    if (!isOnline) {
+      // Offline launch: run purely on localStorage until the retry fires.
+      cloudSyncRef.current.ready = true;
+      return;
+    }
+
+    // Edits made before the first successful pull (typed while offline) are
+    // the newest version of the truth — adopting the server blob now would
+    // silently discard them. Skip the pull and let the push carry them up.
+    if (JSON.stringify(cloudStateRef.current) !== loadedBlob) {
+      initialPullDoneRef.current = true;
+      cloudSyncRef.current.ready = true;
+      return;
+    }
+
     let cancelled = false;
     setSyncStatus('syncing');
     fetch('/api/state', { headers: { Authorization: `Bearer ${authToken}` } })
@@ -581,6 +623,7 @@ export default function App() {
           cloudSyncRef.current.lastServerBlob = JSON.stringify(data);
           cloudSyncRef.current.lastModified = lastModified || 0;
         }
+        initialPullDoneRef.current = true;
         cloudSyncRef.current.ready = true;
         setSyncStatus('synced');
       })
@@ -593,19 +636,14 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, authToken]);
+  }, [isAuthenticated, authToken, isOnline, loadedBlob]);
 
-  const cloudState = useMemo<CloudState>(
-    () => ({ tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes }),
-    [tasks, prioritiesWeek, prioritiesMonth, habits, goals, inboxTasks, goalsInbox, freeformContent, codingTasks, codingPrioritiesWeek, codingPrioritiesMonth, codingNotes, dailyNotes]
-  );
-  // Latest cloudState, readable from the long-lived poll closure below.
-  const cloudStateRef = useRef(cloudState);
-  cloudStateRef.current = cloudState;
-
-  // Debounced push when anything changes
+  // Debounced push when anything changes. Nothing is sent while offline; the
+  // effect re-runs on reconnect and flushes whatever accumulated by then, so
+  // offline edits are queued rather than lost.
   useEffect(() => {
     if (!isAuthenticated || !cloudSyncRef.current.ready) return;
+    if (!isOnline) return;
     const blob = JSON.stringify(cloudState);
     if (blob === cloudSyncRef.current.lastServerBlob) return;
     setSyncStatus('syncing');
@@ -627,13 +665,14 @@ export default function App() {
         .catch(() => setSyncStatus('error'));
     }, 800);
     return () => window.clearTimeout(handle);
-  }, [cloudState, isAuthenticated, authToken]);
+  }, [cloudState, isAuthenticated, authToken, isOnline]);
 
   // Poll every 30s (and on tab refocus) for remote changes
   useEffect(() => {
     if (!isAuthenticated) return;
     const pull = () => {
       if (document.visibilityState !== 'visible') return;
+      if (!navigator.onLine) return;
       fetch('/api/state', { headers: { Authorization: `Bearer ${authToken}` } })
         .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
         .then(({ state }) => {
@@ -731,7 +770,9 @@ export default function App() {
       <GlassCard className="app-header" style={{ borderRadius: '0px 0px 16px 16px', borderTop: 'none' }}>
         <div className="brand-section">
           <span className="brand-title">Productivity & Execution Planning</span>
-          <SyncBadge status={syncStatus} />
+          {/* Offline wins over whatever the last network result was: with no
+              connection the app is running purely on local storage. */}
+          <SyncBadge status={isOnline ? syncStatus : 'offline'} />
         </div>
 
         {/* Tab Controls */}
@@ -807,6 +848,10 @@ export default function App() {
           </button>
         </div>
       </GlassCard>
+
+      {/* Strip under the header: when the app itself last changed, and which
+          model made the change. */}
+      <EditTicker />
 
       {/* Main Container rendering active tab */}
       <main className="container">

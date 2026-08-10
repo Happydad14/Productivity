@@ -82,6 +82,43 @@ Make sure you have Node.js installed (v18+ recommended).
 
 ---
 
+## 📴 Offline Mode (installable PWA)
+
+The dashboard runs with no network connection at all.
+
+* **Service worker** (`public/sw.js`) caches the app shell and the hashed
+  `/assets/*` bundles, so a cold load with no connection still boots the full
+  app. Navigations are network-first (you always get the newest deploy when
+  online) and fall back to the cached shell when offline; bundles are
+  cache-first; the Google Fonts stylesheet and woff2 files are cached too so
+  offline typography matches.
+* **Never cached**: `/api/state`. Serving a stale cloud blob could let an old
+  copy overwrite newer local edits — `localStorage` is the offline data source.
+* **Install to home screen / desktop** via `public/manifest.webmanifest`
+  (standalone display, dark theme color).
+* **Sync behavior offline**: the header badge shows **Offline**, every change
+  is written to `localStorage` as usual, and pushes are held rather than
+  attempted. On reconnect the queued changes are pushed automatically. If the
+  app was opened with no connection, the first cloud pull is retried once
+  connectivity returns — but it is skipped if you edited anything in the
+  meantime, so offline work is never overwritten by an older cloud copy.
+* Updates take over as soon as a new deploy is fetched; an already-open tab
+  reloads itself once so it never runs a stale bundle against a fresh cache.
+
+## 🕒 Last-Edit Ticker
+
+The strip under the header shows when the app itself last changed and which
+model made the change, with the recent history scrolling beside it (hover to
+pause, hidden under `prefers-reduced-motion` and on phones).
+
+The data is read from `git log` at **build time** by `vite.config.ts` and baked
+into the bundle (no API call, so it works offline). The model name comes from
+the commit trailer — `Co-authored-by: Claude Opus 5 <…>`, or an explicit
+`Model: <name>` line — so keeping that trailer on commits is what keeps the
+attribution accurate. Commits without one are attributed to their git author.
+
+---
+
 ## 🏗️ Production Build Commands
 To check for TypeScript compiler validity and build production static files, run:
 ```powershell
