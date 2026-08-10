@@ -613,6 +613,161 @@ body {
   padding: 15px 30px;
 }
 
+/* ==========================================================================
+   EDIT TICKER — when the app itself last changed, and which model did it.
+   Latest edit is pinned left (always readable); history scrolls beside it.
+   ========================================================================== */
+.edit-ticker {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 1400px;
+  margin: -14px auto 20px;
+  padding: 8px 20px;
+  min-width: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+.edit-ticker-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 0.65rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.edit-ticker-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse 2.6s ease-in-out infinite;
+}
+
+.edit-ticker-latest {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.edit-ticker-model {
+  color: var(--color-work);
+  font-weight: 700;
+}
+
+.edit-ticker-ago {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.edit-ticker-sep {
+  color: var(--text-dim);
+  opacity: 0.6;
+}
+
+.edit-ticker-viewport {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  /* Fade the entries in and out at the edges instead of clipping hard. */
+  mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+}
+
+.edit-ticker-track {
+  display: flex;
+  width: max-content;
+  animation-name: edit-ticker-scroll;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+/* Hover to read an entry that would otherwise scroll away. */
+.edit-ticker-viewport:hover .edit-ticker-track {
+  animation-play-state: paused;
+}
+
+.edit-ticker-seq {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.edit-ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 22px;
+  white-space: nowrap;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.edit-ticker-time {
+  color: var(--text-dim);
+}
+
+.edit-ticker-subject {
+  color: var(--text-muted);
+}
+
+@keyframes edit-ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .edit-ticker-track {
+    animation: none;
+  }
+  .edit-ticker-viewport {
+    overflow-x: auto;
+  }
+  /* The duplicate sequence only exists to make the loop seamless. */
+  .edit-ticker-seq + .edit-ticker-seq {
+    display: none;
+  }
+  .edit-ticker-pulse {
+    animation: none;
+  }
+}
+
+/* On phones the scrolling history costs more room than it earns — keep the
+   pinned "last edit" line only. */
+@media (max-width: 768px) {
+  .edit-ticker {
+    margin: -12px auto 14px;
+    padding: 6px 14px;
+  }
+  .edit-ticker-viewport {
+    display: none;
+  }
+  .edit-ticker-latest {
+    white-space: normal;
+  }
+}
+
+[data-theme='light-neumorphic'] .edit-ticker {
+  color: #5a4a32;
+}
+
+[data-theme='light-neumorphic'] .edit-ticker-latest {
+  color: #2d2418;
+}
+
+[data-theme='light-neumorphic'] .edit-ticker-item {
+  border-right-color: rgba(168, 145, 100, 0.28);
+}
+
 /* At intermediate widths the brand + tabs + theme controls no longer fit on a
    single row and would otherwise push a horizontal scrollbar onto the whole
    page (~770–1180px). Let the header wrap there. Above this width everything
