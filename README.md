@@ -105,17 +105,21 @@ The dashboard runs with no network connection at all.
 * Updates take over as soon as a new deploy is fetched; an already-open tab
   reloads itself once so it never runs a stale bundle against a fresh cache.
 
-## 🕒 Last-Edit Ticker
+## 🕒 Last-Edit Tagline
 
-The strip under the header shows when the app itself last changed and which
-model made the change, with the recent history scrolling beside it (hover to
-pause, hidden under `prefers-reduced-motion` and on phones).
+A static one-liner under the header showing when the app itself last changed
+and which model made the change:
+
+```
+LAST EDIT  Aug 10, 2026, 5:24 PM · Claude Opus 5 · 2 hours ago
+```
 
 The data is read from `git log` at **build time** by `vite.config.ts` and baked
 into the bundle (no API call, so it works offline). The model name comes from
 the commit trailer — `Co-authored-by: Claude Opus 5 <…>`, or an explicit
 `Model: <name>` line — so keeping that trailer on commits is what keeps the
-attribution accurate. Commits without one are attributed to their git author.
+attribution accurate. Commits without one show the timestamp alone; no git
+author name is displayed.
 
 ---
 

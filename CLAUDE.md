@@ -12,7 +12,7 @@ git push
 
 This triggers an automatic Vercel redeploy. Do not wait for the user to ask — commit and push immediately after finishing the changes.
 
-Include a model trailer on the commit so the header's last-edit ticker can
+Include a model trailer on the commit so the header's last-edit tagline can
 attribute the change (it reads `git log` at build time):
 
 ```
@@ -31,4 +31,4 @@ Co-authored-by: Claude <model name> <noreply@anthropic.com>
 - `src/index.css` — all glassmorphism CSS, task item styles, scorecard row styles
 - `src/components/TabDailyDashboard.tsx` — main dashboard tab
 - `public/sw.js` — service worker powering offline mode (never cache `/api/*`)
-- `vite.config.ts` — bakes the git edit history into the build for the ticker
+- `vite.config.ts` — bakes the last git edit into the build for the tagline
