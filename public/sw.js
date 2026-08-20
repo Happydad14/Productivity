@@ -15,7 +15,7 @@
 // Bump on every shell change — including a redrawn icon. The icons below
 // are precached and served cache-first, so an installed copy keeps showing
 // the old mark until this name changes.
-const VERSION = 'xp-v2';
+const VERSION = 'xp-v3';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const FONT_CACHE = `${VERSION}-fonts`;
