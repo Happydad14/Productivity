@@ -36,11 +36,13 @@ const DEFAULT_DURATIONS: Durations = { focus: 25, short: 5, long: 15 };
 const SESSIONS_PER_LONG_BREAK = 4;
 const EDGE_MARGIN = 8;
 
-const MODE_META: Record<PomodoroMode, { label: string; emoji: string }> = {
-  focus: { label: 'Focus', emoji: '🍅' },
-  short: { label: 'Short Break', emoji: '☕' },
-  long: { label: 'Long Break', emoji: '🌴' },
+const MODE_META: Record<PomodoroMode, { label: string }> = {
+  focus: { label: 'Focus' },
+  short: { label: 'Short Break' },
+  long: { label: 'Long Break' },
 };
+
+const FOCUS_PRESETS = [25, 40, 55] as const;
 
 const todayKey = (): string => {
   const d = new Date();
@@ -177,7 +179,7 @@ const notifySessionDone = (finishedMode: PomodoroMode, nextMode: PomodoroMode) =
       finishedMode === 'focus'
         ? `Focus session done — time for a ${MODE_META[nextMode].label.toLowerCase()}.`
         : 'Break over — ready for the next focus session.';
-    new Notification(`${MODE_META[finishedMode].emoji} Pomodoro complete`, { body });
+    new Notification('Focus timer complete', { body });
   } catch {
     /* notifications unavailable — ignore */
   }
@@ -235,7 +237,7 @@ export const PomodoroTimer: React.FC = () => {
   useEffect(() => {
     const base = baseTitleRef.current;
     if (st.running) {
-      document.title = `${formatClock(st.remainingSec)} ${MODE_META[st.mode].emoji} ${base}`;
+      document.title = `${formatClock(st.remainingSec)} · ${MODE_META[st.mode].label} · ${base}`;
     } else {
       document.title = base;
     }
@@ -333,6 +335,18 @@ export const PomodoroTimer: React.FC = () => {
     });
   };
 
+  const setFocusPreset = (minutes: (typeof FOCUS_PRESETS)[number]) => {
+    setSt(prev => {
+      if (prev.running || prev.durations.focus === minutes) return prev;
+      return {
+        ...prev,
+        durations: { ...prev.durations, focus: minutes },
+        remainingSec: prev.mode === 'focus' ? minutes * 60 : prev.remainingSec,
+        endAt: null,
+      };
+    });
+  };
+
   // ---------------- Drag handling ----------------
   const onDragPointerDown = (e: React.PointerEvent<HTMLElement>) => {
     if (e.button !== 0 && e.pointerType === 'mouse') return;
@@ -412,10 +426,9 @@ export const PomodoroTimer: React.FC = () => {
           setSt(prev => ({ ...prev, collapsed: false }));
         }}
         role="button"
-        aria-label={`Pomodoro timer — ${meta.label}, ${formatClock(st.remainingSec)}${st.running ? ', running' : ', paused'}. Click to expand, drag to move.`}
+        aria-label={`Focus timer — ${meta.label}, ${formatClock(st.remainingSec)}${st.running ? ', running' : ', paused'}. Click to expand, drag to move.`}
         title="Click to expand · drag to move"
       >
-        <span className="pomo-pill-emoji" aria-hidden="true">{meta.emoji}</span>
         <span className="pomo-pill-time">{formatClock(st.remainingSec)}</span>
         <button
           className="pomo-pill-action"
@@ -442,7 +455,7 @@ export const PomodoroTimer: React.FC = () => {
       className={`pomo-card pomo-mode-${st.mode}`}
       style={positionStyle}
       role="dialog"
-      aria-label="Pomodoro timer"
+      aria-label="Focus timer"
     >
       <div
         className="pomo-card-header"
@@ -453,7 +466,7 @@ export const PomodoroTimer: React.FC = () => {
         title="Drag to move"
       >
         <span className="pomo-card-grip" aria-hidden="true">⋮⋮</span>
-        <span className="pomo-card-title">{meta.emoji} Pomodoro</span>
+        <span className="pomo-card-title">Focus Timer</span>
         <div className="pomo-card-header-btns">
           <button
             className="pomo-icon-btn"
@@ -477,6 +490,26 @@ export const PomodoroTimer: React.FC = () => {
           >
             —
           </button>
+        </div>
+      </div>
+
+      <div className="pomo-schedule" role="group" aria-label="Work session length">
+        <span className="pomo-schedule-label">Work length</span>
+        <div className="pomo-schedule-options">
+          {FOCUS_PRESETS.map(minutes => (
+            <button
+              key={minutes}
+              type="button"
+              className={`pomo-schedule-btn ${st.durations.focus === minutes ? 'active' : ''}`}
+              onClick={() => setFocusPreset(minutes)}
+              disabled={st.running}
+              aria-pressed={st.durations.focus === minutes}
+              title={st.running ? 'Pause the timer to change work length' : `${minutes}-minute work block`}
+            >
+              {minutes}
+              <span>min</span>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -544,6 +577,7 @@ export const PomodoroTimer: React.FC = () => {
 
       {showSettings && (
         <div className="pomo-settings">
+          <div className="pomo-settings-heading">Custom durations</div>
           {(Object.keys(MODE_META) as PomodoroMode[]).map(m => (
             <label key={m} className="pomo-setting-row">
               <span>{MODE_META[m].label}</span>
@@ -553,6 +587,8 @@ export const PomodoroTimer: React.FC = () => {
                   min={1}
                   max={180}
                   value={st.durations[m]}
+                  disabled={st.running}
+                  title={st.running ? 'Pause the timer to edit durations' : undefined}
                   onChange={(e) => {
                     // Ignore a cleared field so backspacing doesn't snap to 1min.
                     if (e.target.value === '') return;
