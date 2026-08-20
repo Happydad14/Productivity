@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!-- Productivity: a target whose rings ARE the four life categories —
+       health, family, career, work — with the day's hit dead centre. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1224"/>
+      <stop offset="0.55" stop-color="#050811"/>
+      <stop offset="1" stop-color="#010205"/>
+    </linearGradient>
+    <radialGradient id="gSky" cx="0.18" cy="0.2" r="0.62">
+      <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gViolet" cx="0.84" cy="0.82" r="0.64">
+      <stop offset="0" stop-color="#a855f7" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="24"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#gSky)"/>
+  <rect width="1024" height="1024" fill="url(#gViolet)"/>
+
+  <g filter="url(#soft)" opacity="0.55">
+    <circle cx="512" cy="512" r="300" fill="none" stroke="#f97316" stroke-width="76"/>
+    <circle cx="512" cy="512" r="224" fill="none" stroke="#10b981" stroke-width="76"/>
+    <circle cx="512" cy="512" r="148" fill="none" stroke="#a855f7" stroke-width="76"/>
+  </g>
+  <circle cx="512" cy="512" r="300" fill="none" stroke="#f97316" stroke-width="76"/>
+  <circle cx="512" cy="512" r="224" fill="none" stroke="#10b981" stroke-width="76"/>
+  <circle cx="512" cy="512" r="148" fill="none" stroke="#a855f7" stroke-width="76"/>
+  <circle cx="512" cy="512" r="110" fill="#0ea5e9"/>
+  <circle cx="512" cy="512" r="44"  fill="#f8fafc"/>
+</svg>
