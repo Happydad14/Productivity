@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1224"/>
+      <stop offset="0.55" stop-color="#050811"/>
+      <stop offset="1" stop-color="#010205"/>
+    </linearGradient>
+    <radialGradient id="gSky" cx="0.18" cy="0.18" r="0.6">
+      <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.26"/>
+      <stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gViolet" cx="0.84" cy="0.82" r="0.62">
+      <stop offset="0" stop-color="#a855f7" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#gSky)"/>
+  <rect width="1024" height="1024" fill="url(#gViolet)"/>
+
+  <!-- four life categories, one arc each: work / career / family / health -->
+  <g fill="none" stroke-width="108" stroke-linecap="round">
+    <g stroke-opacity="0.55" filter="url(#soft)">
+      <path d="M538.1 213.1 A 300 300 0 0 1 810.9 485.9" stroke="#0ea5e9"/>
+      <path d="M810.9 538.1 A 300 300 0 0 1 538.1 810.9" stroke="#a855f7"/>
+      <path d="M485.9 810.9 A 300 300 0 0 1 213.1 538.1" stroke="#10b981"/>
+      <path d="M213.1 485.9 A 300 300 0 0 1 485.9 213.1" stroke="#f97316"/>
+    </g>
+    <path d="M538.1 213.1 A 300 300 0 0 1 810.9 485.9" stroke="#0ea5e9"/>
+    <path d="M810.9 538.1 A 300 300 0 0 1 538.1 810.9" stroke="#a855f7"/>
+    <path d="M485.9 810.9 A 300 300 0 0 1 213.1 538.1" stroke="#10b981"/>
+    <path d="M213.1 485.9 A 300 300 0 0 1 485.9 213.1" stroke="#f97316"/>
+  </g>
+
+  <!-- the day closed out -->
+  <path d="M398 516 L 476 596 L 632 428" fill="none" stroke="#f8fafc" stroke-width="78"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
