@@ -12,14 +12,26 @@
  *                   localStorage is the offline data source instead.
  */
 
-const VERSION = 'xp-v1';
+// Bump on every shell change — including a redrawn icon. The icons below
+// are precached and served cache-first, so an installed copy keeps showing
+// the old mark until this name changes.
+const VERSION = 'xp-v2';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 const FONT_CACHE = `${VERSION}-fonts`;
 const CURRENT_CACHES = [SHELL_CACHE, ASSET_CACHE, FONT_CACHE];
 const FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
-const SHELL_URLS = ['/', '/index.html', '/manifest.webmanifest', '/favicon.svg', '/icons.svg'];
+const SHELL_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/favicon.svg',
+  '/icons.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/apple-touch-icon.png',
+];
 
 // Static hosts (Vercel, `vite preview`) answer with `Vary: Origin`, and the
 // worker's own precache fetches don't carry the same Origin header the page's

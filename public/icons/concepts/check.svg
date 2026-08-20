@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0d1428"/>
+      <stop offset="0.55" stop-color="#050811"/>
+      <stop offset="1" stop-color="#010205"/>
+    </linearGradient>
+    <radialGradient id="gSky" cx="0.2" cy="0.2" r="0.62">
+      <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#0ea5e9" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gViolet" cx="0.82" cy="0.8" r="0.66">
+      <stop offset="0" stop-color="#a855f7" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#a855f7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="tick" gradientUnits="userSpaceOnUse" x1="300" y1="700" x2="740" y2="330">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.55" stop-color="#818cf8"/>
+      <stop offset="1" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="pane" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.07"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0.30"/>
+    </linearGradient>
+    <filter id="soft" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="22"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#gSky)"/>
+  <rect width="1024" height="1024" fill="url(#gViolet)"/>
+
+  <!-- the glass pane the whole app is built out of -->
+  <rect x="244" y="244" width="536" height="536" rx="148" fill="url(#pane)"/>
+  <rect x="256" y="256" width="512" height="512" rx="138" fill="none"
+        stroke="url(#edge)" stroke-width="12"/>
+
+  <!-- backlit glow, then the tick -->
+  <path d="M362 526 L 470 638 L 668 388" fill="none" stroke="#818cf8" stroke-opacity="0.6"
+        stroke-width="126" stroke-linecap="round" stroke-linejoin="round" filter="url(#soft)"/>
+  <path d="M362 526 L 470 638 L 668 388" fill="none" stroke="url(#tick)"
+        stroke-width="122" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
